@@ -1,21 +1,20 @@
 module Game
--- (
---     BoardSetting,
---     Player,
---     BoardState,
---     GameState,
---     Move,
---     newGame,
---     whoWins,
---     availableMoves, 
---     applyMove
--- ) 
+(
+    BoardSetting (..),
+    Player (..),
+    BoardState (..),
+    GameState (..),
+    Move (..),
+    newGame,
+    whoWins,
+    availableMoves, 
+    applyMove
+) 
 where
-
--- Pozioma linia nie działa poprawnie
 
 import qualified Data.Sequence as Seq
 import Data.Maybe
+
 
 data BoardSetting = BoardSetting {nRows :: Int, nColumns :: Int, lineToWin :: Int}
 
@@ -90,13 +89,13 @@ oponent :: Player -> Player
 oponent Red = Blue
 oponent Blue = Red
 
+
+
 applyMove :: GameState -> Move -> Maybe GameState
-applyMove gs@(GameState bs@(BoardSetting m n k) board player) move
-    | (isCorrect gs) && (elem move (availableMoves gs)) =
-        case firstFreeFromColumn of
-                Just firstFree -> Just (GameState bs (Seq.adjust' (\_ -> Just player) (m * move + firstFree) board) (oponent player))
-                Nothing -> Nothing
-    | otherwise = Nothing
-        where
-            firstFreeFromColumn = Seq.findIndexL Data.Maybe.isNothing (Seq.index (Seq.chunksOf m board) move)
+applyMove gs@(GameState bs@(BoardSetting m n k) board player) move =
+    case firstFreeFromColumn of
+            Just firstFree -> Just (GameState bs (Seq.adjust' (\_ -> Just player) (m * move + firstFree) board) (oponent player))
+            Nothing -> Nothing
+    where
+        firstFreeFromColumn = Seq.findIndexL Data.Maybe.isNothing (Seq.index (Seq.chunksOf m board) move)
 
