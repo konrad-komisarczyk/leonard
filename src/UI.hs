@@ -73,9 +73,9 @@ defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False A
 
 mainWrapper :: Widget Event -> AppView Gtk.Window Event
 mainWrapper child = bin Gtk.Window
-  [ #title := "λeonard"
-  , on #deleteEvent (const (True, Closed))
-  , #resizable := False
+  [ #title := "λeonard", 
+  on #deleteEvent (const (True, Closed)), 
+  #resizable := False
   ]
   $ child
 
@@ -116,13 +116,13 @@ boardToGridChildren :: Int -> BoardState -> Vector (GridChild Event)
 boardToGridChildren m board = fromList (toList (Seq.mapWithIndex (boardElemToGridChild m) board))
 
 moveToButton :: Player -> Move -> Widget Event
-moveToButton Red move = bin Gtk.Button [on #clicked (MovePlayed move)] (widget Gtk.Image [#file := "img/redArrow.png"])
-moveToButton Blue move = bin Gtk.Button [on #clicked (MovePlayed move)] (widget Gtk.Image [#file := "img/blueArrow.png"])
+moveToButton Red move = bin Gtk.Button [on #clicked (MovePlayed move), #margin := 4] (widget Gtk.Image [#file := "img/redArrow.png"])
+moveToButton Blue move = bin Gtk.Button [on #clicked (MovePlayed move), #margin := 4] (widget Gtk.Image [#file := "img/blueArrow.png"])
 
 moveToGridChild :: Player -> Move -> GridChild Event
 moveToGridChild player move = GridChild {
     properties = defaultGridChildProperties {
-        width = 1, height = 1, 
+        width = 1, height = 1,
         leftAttach = ((fromIntegral move) :: Int32), 
         topAttach = 0
         },
@@ -151,26 +151,26 @@ gameWindow :: GameState -> Bool -> Maybe Player -> AppView Gtk.Window Event
 gameWindow gameState showMoves winningPlayer = mainWrapper
   $ container Gtk.Box [
       #orientation := Gtk.OrientationVertical, 
-      #spacing := 8] [
+      #halign := Gtk.AlignCenter] [
       container Gtk.Box [
-          #orientation := Gtk.OrientationHorizontal, 
-          #spacing := 8
+          #orientation := Gtk.OrientationVertical, 
+          #halign := Gtk.AlignCenter,
+          #margin := 10
           ] (winInformation winningPlayer),
       container Gtk.Box [
-          #orientation := Gtk.OrientationHorizontal, 
-          #spacing := 8
+          #orientation := Gtk.OrientationHorizontal
           ] [
           container Gtk.Box [ -- board container
-              #orientation := Gtk.OrientationVertical, 
-              #spacing := 8
+              #orientation := Gtk.OrientationVertical,
+              #margin := 10
               ] [
               (gameGrid gameState showMoves)
           ]
       ],
       container Gtk.Box [
-          #orientation := Gtk.OrientationHorizontal, 
-          #spacing := 8] [
-          widget Gtk.Button [#label := "Back to Main Menu", on #clicked EndGame]
+          #orientation := Gtk.OrientationVertical,
+          #margin := 10] [
+          widget Gtk.Button [#label := "Back to Main Menu", on #clicked EndGame, #halign := Gtk.AlignCenter]
       ]
   ]
 
@@ -182,34 +182,55 @@ view' (ErrorWindow message) =
 -- Settings window
 view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficulty redSeed isBlueComputer blueDifficulty blueSeed) = 
     mainWrapper $ container Gtk.Box [
-      #orientation := Gtk.OrientationVertical, 
-      #spacing := 12
+      #orientation := Gtk.OrientationVertical,
+      #margin := 10
       ] [
        -- first row (board settings)
-      widget Gtk.Label [#label := "Board settings: "],
+      widget Gtk.Label [
+          #label := "Board settings: ", 
+          #halign := Gtk.AlignCenter,
+          #marginBottom := 4],
       container Gtk.Box [
-          #orientation := Gtk.OrientationHorizontal, 
-          #spacing := 8
+          #orientation := Gtk.OrientationVertical
           ] [
-          widget Gtk.Label [#label := "number of rows: "],
-          minusButton m k (\a -> MChanged a),
-          widget Gtk.Label [#label := (Data.Text.pack (show m))],
-          plusButton m GameConstants.maxRows (\a -> MChanged a),
-          widget Gtk.Separator [],
-          widget Gtk.Label [#label := "number of columns: "],
-          minusButton n k (\a -> NChanged a),
-          widget Gtk.Label [#label := (Data.Text.pack (show n))],
-          plusButton n GameConstants.maxColumns (\a -> NChanged a),
-          widget Gtk.Separator [],
-          widget Gtk.Label [#label := "length of line to win: "],
-          minusButton k GameConstants.minLine (\a -> KChanged a),
-          widget Gtk.Label [#label := (Data.Text.pack (show k))],
-          plusButton k (min m n) (\a -> KChanged a)
+          container Gtk.Box [ -- rows settings
+              #marginTop := 8,
+              #spacing := 8
+          ] [
+              widget Gtk.Label [#label := "number of rows: "],
+              minusButton m k (\a -> MChanged a),
+              widget Gtk.Label [#label := (Data.Text.pack (show m))],
+              plusButton m GameConstants.maxRows (\a -> MChanged a)
+          ],
+          container Gtk.Box [ -- columns settings
+              #marginTop := 8,
+              #spacing := 8
+          ] [
+              widget Gtk.Label [#label := "number of columns: "],
+              minusButton n k (\a -> NChanged a),
+              widget Gtk.Label [#label := (Data.Text.pack (show n))],
+              plusButton n GameConstants.maxColumns (\a -> NChanged a)
+          ],
+          container Gtk.Box [ -- winning line settings
+              #marginTop := 8,
+              #spacing := 8
+          ] [
+              widget Gtk.Label [#label := "length of line to win: "],
+              minusButton k GameConstants.minLine (\a -> KChanged a),
+              widget Gtk.Label [#label := (Data.Text.pack (show k))],
+              plusButton k (min m n) (\a -> KChanged a)
+          ]
       ],
-      widget Gtk.Separator [],
+      widget Gtk.Separator [
+          #margin := 16],
        -- second row (player settings)
+      widget Gtk.Label [
+          #label := "Players settings: ", 
+          #halign := Gtk.AlignCenter,
+          #marginBottom := 4],
       container Gtk.Box [ -- red player settings
-          #orientation := Gtk.OrientationHorizontal, 
+          #orientation := Gtk.OrientationHorizontal,
+          #marginTop := 8,
           #spacing := 8
           ] [
           widget Gtk.Label [#label := "Red player: "], 
@@ -221,7 +242,8 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
               
       ],
       container Gtk.Box [ -- blue player settings
-          #orientation := Gtk.OrientationHorizontal, 
+          #orientation := Gtk.OrientationHorizontal,
+          #marginTop := 8,
           #spacing := 8
           ] [
           widget Gtk.Label [#label := "Blue player: "], 
@@ -231,13 +253,13 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
               widget Gtk.Button [#label := "Player (click to change)", on #clicked (BlueTypeChanged True)]
           -- TODO Difficulty setting
       ],
-      widget Gtk.Separator [],
+      widget Gtk.Separator [
+          #margin := 16],
        -- third row (containing start game button)
       container Gtk.Box [
-          #orientation := Gtk.OrientationHorizontal, 
-          #spacing := 8
+          #orientation := Gtk.OrientationVertical
           ] [
-          widget Gtk.Button [#label := "Start game", on #clicked StartGame]
+          widget Gtk.Button [#label := "Start game", on #clicked StartGame, #halign := Gtk.AlignCenter]
       ]
   ]
 view' (UserVSUserWindow gameState) = 
