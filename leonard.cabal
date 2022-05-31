@@ -29,8 +29,11 @@ executable leonard
       src
   ghc-options: -threaded
   build-depends:
-      base >=4.7 && <5
+      async
+    , base >=4.7 && <5
+    , bytestring
     , containers
+    , gi-gdk
     , gi-gtk
     , gi-gtk-declarative
     , gi-gtk-declarative-app-simple

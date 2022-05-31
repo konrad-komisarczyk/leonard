@@ -19,8 +19,6 @@ import Data.Foldable (toList)
 import Data.Int
 import Data.Maybe
 import System.Random
-import           Data.Functor                   ( ($>) )
-import           Control.Concurrent             ( threadDelay )
 
 type PlaySpeed = Int
 
@@ -144,8 +142,8 @@ gameGrid gameState@(GameState bs@(BoardSetting m n _) board player) showMoves = 
 
 winInformation :: Maybe Player -> Vector (BoxChild Event)
 winInformation Nothing = []
-winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!"]]
-winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!"]]
+winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!", classes ["winInformation", "blue"]]]
+winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!", classes ["winInformation", "red"]]]
 
 gameWindow :: GameState -> Bool -> Maybe Player -> AppView Gtk.Window Event
 gameWindow gameState showMoves winningPlayer = mainWrapper
@@ -189,7 +187,8 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
       widget Gtk.Label [
           #label := "Board settings: ", 
           #halign := Gtk.AlignCenter,
-          #marginBottom := 4],
+          #marginBottom := 4, 
+          classes ["header"]],
       container Gtk.Box [
           #orientation := Gtk.OrientationVertical
           ] [
@@ -197,7 +196,7 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
               #marginTop := 8,
               #spacing := 8
           ] [
-              widget Gtk.Label [#label := "number of rows: "],
+              widget Gtk.Label [#label := "Number of rows: ", classes ["settingsLabel"]],
               minusButton m k (\a -> MChanged a),
               widget Gtk.Label [#label := (Data.Text.pack (show m))],
               plusButton m GameConstants.maxRows (\a -> MChanged a)
@@ -206,7 +205,7 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
               #marginTop := 8,
               #spacing := 8
           ] [
-              widget Gtk.Label [#label := "number of columns: "],
+              widget Gtk.Label [#label := "Number of columns: ", classes ["settingsLabel"]],
               minusButton n k (\a -> NChanged a),
               widget Gtk.Label [#label := (Data.Text.pack (show n))],
               plusButton n GameConstants.maxColumns (\a -> NChanged a)
@@ -215,7 +214,7 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
               #marginTop := 8,
               #spacing := 8
           ] [
-              widget Gtk.Label [#label := "length of line to win: "],
+              widget Gtk.Label [#label := "Length of line to win: ", classes ["settingsLabel"]],
               minusButton k GameConstants.minLine (\a -> KChanged a),
               widget Gtk.Label [#label := (Data.Text.pack (show k))],
               plusButton k (min m n) (\a -> KChanged a)
@@ -227,30 +226,33 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
       widget Gtk.Label [
           #label := "Players settings: ", 
           #halign := Gtk.AlignCenter,
-          #marginBottom := 4],
+          #marginBottom := 4, 
+          classes ["header"]],
       container Gtk.Box [ -- red player settings
           #orientation := Gtk.OrientationHorizontal,
           #marginTop := 8,
-          #spacing := 8
+          #spacing := 8, 
+          classes ["red"]
           ] [
-          widget Gtk.Label [#label := "Red player: "], 
+          widget Gtk.Label [#label := "Red: ", classes ["settingsLabel"]], 
           if isRedComputer then
-              widget Gtk.Button [#label := "Computer (click to change)", on #clicked (RedTypeChanged False)]
+              widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)]
           else 
-              widget Gtk.Button [#label := "Player (click to change)", on #clicked (RedTypeChanged True)]
+              widget Gtk.Button [#label := "Player", on #clicked (RedTypeChanged True)]
           -- TODO Difficulty setting
               
       ],
       container Gtk.Box [ -- blue player settings
           #orientation := Gtk.OrientationHorizontal,
           #marginTop := 8,
-          #spacing := 8
+          #spacing := 8, 
+          classes ["blue"]
           ] [
-          widget Gtk.Label [#label := "Blue player: "], 
+          widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel"]], 
           if isBlueComputer then
-              widget Gtk.Button [#label := "Computer (click to change)", on #clicked (BlueTypeChanged False)]
+              widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)]
           else 
-              widget Gtk.Button [#label := "Player (click to change)", on #clicked (BlueTypeChanged True)]
+              widget Gtk.Button [#label := "Player", on #clicked (BlueTypeChanged True)]
           -- TODO Difficulty setting
       ],
       widget Gtk.Separator [

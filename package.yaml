@@ -16,11 +16,14 @@ dependencies:
   - gi-gtk
   - gi-gtk-declarative
   - gi-gtk-declarative-app-simple
+  - gi-gdk
   - haskell-gi-base
   - text
   - vector
   - containers
   - random
+  - bytestring
+  - async
 
 ghc-options:
   - -threaded
