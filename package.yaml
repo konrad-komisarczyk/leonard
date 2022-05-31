@@ -1,0 +1,32 @@
+name:                leonard
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/githubuser/leonard#readme
+license:             BSD3
+author:              Konrad Komisarczyk
+maintainer:          komisarczykk@student.mini.pw.edu.pl
+copyright:           2022, Konrad Komisarczyk
+category:            Game
+extra-source-files:
+- README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+  - gi-gtk
+  - gi-gtk-declarative
+  - gi-gtk-declarative-app-simple
+  - haskell-gi-base
+  - text
+  - vector
+  - containers
+  - random
+
+ghc-options:
+  - -threaded
+#  "$everything": -Wall -threaded
+
+executables:
+  leonard:
+    source-dirs:      src
+    main:             Main.hs

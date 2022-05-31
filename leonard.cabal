@@ -1,0 +1,41 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           leonard
+version:        0.1.0.0
+category:       Game
+homepage:       https://github.com/githubuser/leonard#readme
+author:         Konrad Komisarczyk
+maintainer:     komisarczykk@student.mini.pw.edu.pl
+copyright:      2022, Konrad Komisarczyk
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+executable leonard
+  main-is: Main.hs
+  other-modules:
+      AI
+      Game
+      GameConstants
+      UI
+      Paths_leonard
+  hs-source-dirs:
+      src
+  ghc-options: -threaded
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , gi-gtk
+    , gi-gtk-declarative
+    , gi-gtk-declarative-app-simple
+    , haskell-gi-base
+    , random
+    , text
+    , vector
+  default-language: Haskell2010
