@@ -3,12 +3,9 @@ module AI where
 import Game
 import System.Random
 
-type Difficulty = Int
+type Hiperparameters = Int
 
-defaultDifficulty :: Difficulty
-defaultDifficulty = 1
-
-getNextMove :: RandomGen g => GameState -> Difficulty -> g -> (Maybe Move, g)
+getNextMove :: RandomGen g => GameState -> Hiperparameters -> g -> (Maybe Move, g)
 getNextMove gameState _ generator =
     (Just (moves !! rand), nextGenerator)
     where

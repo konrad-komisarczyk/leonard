@@ -25,17 +25,17 @@ type PlaySpeed = Int
 defaultSpeed :: PlaySpeed
 defaultSpeed = 1
 
-data AISetting = AISetting {difficulty :: AI.Difficulty, generator :: StdGen}
+data AISetting = AISetting {hiperparameters :: AI.Hiperparameters, generator :: StdGen}
 
 
 data State 
     = SettingsWindow {
         boardSetting :: Game.BoardSetting, 
         isRedComputer :: Bool, 
-        redDifficulty :: AI.Difficulty, 
+        redDifficulty :: GameConstants.Difficulty, 
         redSeed :: Int,
         isBlueComputer :: Bool, 
-        blueDifficulty :: AI.Difficulty,
+        blueDifficulty :: GameConstants.Difficulty,
         blueSeed :: Int}
     | UserVSUserWindow {
         gameState :: Game.GameState} 
@@ -61,13 +61,13 @@ data Event
     | MChanged Int | NChanged Int | KChanged Int
     | RedTypeChanged Bool 
     | BlueTypeChanged Bool 
-    | RedDifficultyChanged AI.Difficulty
-    | BlueDifficultyChanged AI.Difficulty
+    | RedDifficultyChanged GameConstants.Difficulty
+    | BlueDifficultyChanged GameConstants.Difficulty
     | RedSeedChanged Int
     | BlueSeedChanged Int
 
 defaultSettingsWindow :: State
-defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False AI.defaultDifficulty 137 False AI.defaultDifficulty 213
+defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False GameConstants.defaultDifficulty 137 False GameConstants.defaultDifficulty 213
 
 mainWrapper :: Widget Event -> AppView Gtk.Window Event
 mainWrapper child = bin Gtk.Window
@@ -178,7 +178,7 @@ view' :: State -> AppView Gtk.Window Event
 view' (ErrorWindow message) = 
     mainWrapper $ widget Gtk.Label [#label := message]
 -- Settings window
-view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficulty redSeed isBlueComputer blueDifficulty blueSeed) = 
+view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSeed isBlueComputer blueD blueSeed) = 
     mainWrapper $ container Gtk.Box [
       #orientation := Gtk.OrientationVertical,
       #margin := 10
@@ -231,29 +231,36 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redDifficu
       container Gtk.Box [ -- red player settings
           #orientation := Gtk.OrientationHorizontal,
           #marginTop := 8,
-          #spacing := 8, 
-          classes ["red"]
+          #spacing := 8
           ] [
-          widget Gtk.Label [#label := "Red: ", classes ["settingsLabel"]], 
-          if isRedComputer then
-              widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)]
-          else 
+          widget Gtk.Label [#label := "Red: ", classes ["settingsLabel", "red"]], 
+          container Gtk.Box [#spacing := 8] (if isRedComputer then [
+              widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)],
+              widget Gtk.Label [#label := "Difficulty: "],
+              minusButton redD GameConstants.minDifficulty (\a -> RedDifficultyChanged a),
+              widget Gtk.Label [#label := (GameConstants.difficultyName redD)],
+              plusButton redD GameConstants.maxDifficulty (\a -> RedDifficultyChanged a)
+          ]
+          else [
               widget Gtk.Button [#label := "Player", on #clicked (RedTypeChanged True)]
-          -- TODO Difficulty setting
-              
+          ])
       ],
       container Gtk.Box [ -- blue player settings
           #orientation := Gtk.OrientationHorizontal,
           #marginTop := 8,
-          #spacing := 8, 
-          classes ["blue"]
+          #spacing := 8
           ] [
-          widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel"]], 
-          if isBlueComputer then
-              widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)]
-          else 
+          widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel", "blue"]], 
+          container Gtk.Box [#spacing := 8] (if isBlueComputer then [
+              widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)],
+              widget Gtk.Label [#label := "Difficulty: "],
+              minusButton blueD GameConstants.minDifficulty (\a -> BlueDifficultyChanged a),
+              widget Gtk.Label [#label := (GameConstants.difficultyName blueD)],
+              plusButton blueD GameConstants.maxDifficulty (\a -> BlueDifficultyChanged a)
+          ]
+          else [
               widget Gtk.Button [#label := "Player", on #clicked (BlueTypeChanged True)]
-          -- TODO Difficulty setting
+          ])
       ],
       widget Gtk.Separator [
           #margin := 16],
@@ -307,19 +314,19 @@ update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (BlueSeedC
     simpleTrans (SettingsWindow board redC redD redSeed blueC blueD newBlueSeed)
 -- starting game
 update' (SettingsWindow boardSetting True redD redSeed True blueD blueSeed) StartGame = -- both Computers
-    simpleTrans (ComputerVSComputerWindow (Game.newGame boardSetting) (AISetting redD (mkStdGen redSeed)) (AISetting blueD (mkStdGen blueSeed)) defaultSpeed False) -- TODO
+    simpleTrans (ComputerVSComputerWindow (Game.newGame boardSetting) (AISetting (GameConstants.difficultyToHiperparameters redD) (mkStdGen redSeed)) (AISetting (GameConstants.difficultyToHiperparameters blueD) (mkStdGen blueSeed)) defaultSpeed False) -- TODO
 update' (SettingsWindow boardSetting False _ _ False _ _) StartGame = -- both Users
     simpleTrans (UserVSUserWindow (Game.newGame boardSetting))
 update' (SettingsWindow boardSetting False _ _ True blueD blueSeed) StartGame = -- red User, blue Computer
-    simpleTrans (UserVSComputerWindow (Game.newGame boardSetting) (Game.Blue) (AISetting blueD (mkStdGen blueSeed)))
+    simpleTrans (UserVSComputerWindow (Game.newGame boardSetting) (Game.Blue) (AISetting (GameConstants.difficultyToHiperparameters blueD) (mkStdGen blueSeed)))
 update' (SettingsWindow boardSetting True redD redSeed False _ _) StartGame = -- red Computer, blue User
     let 
-        (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) redD (mkStdGen redSeed)
+        (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) (GameConstants.difficultyToHiperparameters redD) (mkStdGen redSeed)
         nextMove = case generatedMove of
             Nothing -> Just (Error "Red cannot choose his first move. This shouldn't happen.")
             Just generatedMoveFromJust -> Just (MovePlayed generatedMoveFromJust)
     in
-        Transition (UserVSComputerWindow (Game.newGame boardSetting) (Game.Red) (AISetting redD nextGenerator)) (pure nextMove)
+        Transition (UserVSComputerWindow (Game.newGame boardSetting) (Game.Red) (AISetting (GameConstants.difficultyToHiperparameters redD) nextGenerator)) (pure nextMove)
 -- quitting game
 update' _ EndGame = 
     simpleTrans (defaultSettingsWindow)
