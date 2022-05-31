@@ -81,20 +81,19 @@ mainWrapper child = bin Gtk.Window
 
 plusButton :: Int -> Int -> (Int -> Event) -> BoxChild Event
 plusButton currVal maxVal event = 
-    if currVal >= maxVal then
-        widget Gtk.Label [#label := " "]
-    else
-        widget Gtk.Button [#label := "+", on #clicked (event (currVal + 1))]
+    widget Gtk.Button [
+        #label := "+", 
+        on #clicked (event (currVal + 1)), 
+        #sensitive := (currVal < maxVal)
+        ]
 
 minusButton :: Int -> Int -> (Int -> Event) -> BoxChild Event
 minusButton currVal minVal event = 
-    if currVal <= minVal then
-        widget Gtk.Label [#label := " "]
-    else
-        widget Gtk.Button [#label := "-", on #clicked (event (currVal - 1))]
-
-tokenSize :: Int
-tokenSize = 64
+    widget Gtk.Button [
+        #label := "-", 
+        on #clicked (event (currVal - 1)), 
+        #sensitive := (currVal > minVal)
+        ]
 
 
 
@@ -116,9 +115,6 @@ boardElemToGridChild m index elem = GridChild {
 boardToGridChildren :: Int -> BoardState -> Vector (GridChild Event)
 boardToGridChildren m board = fromList (toList (Seq.mapWithIndex (boardElemToGridChild m) board))
 
-moveToInt32 :: Move -> Int32
-moveToInt32 move = (fromIntegral move) :: Int32
-
 moveToButton :: Player -> Move -> Widget Event
 moveToButton Red move = bin Gtk.Button [on #clicked (MovePlayed move)] (widget Gtk.Image [#file := "img/redArrow.png"])
 moveToButton Blue move = bin Gtk.Button [on #clicked (MovePlayed move)] (widget Gtk.Image [#file := "img/blueArrow.png"])
@@ -127,7 +123,7 @@ moveToGridChild :: Player -> Move -> GridChild Event
 moveToGridChild player move = GridChild {
     properties = defaultGridChildProperties {
         width = 1, height = 1, 
-        leftAttach = (moveToInt32 move), 
+        leftAttach = ((fromIntegral move) :: Int32), 
         topAttach = 0
         },
     child = (moveToButton player move)
