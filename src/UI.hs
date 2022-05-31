@@ -99,9 +99,9 @@ tokenSize = 64
 
 
 boardElemToImage :: Maybe Player -> Widget Event
-boardElemToImage Nothing = widget Gtk.Label [#label := "."]
-boardElemToImage (Just Red) = widget Gtk.Label [#label := "R"]
-boardElemToImage (Just Blue) = widget Gtk.Label [#label := "B"]
+boardElemToImage Nothing = widget Gtk.Image [#file := "img/empty.png"]
+boardElemToImage (Just Red) = widget Gtk.Image [#file := "img/red.png"]
+boardElemToImage (Just Blue) = widget Gtk.Image [#file := "img/blue.png"]
 
 boardElemToGridChild :: Int -> Int -> Maybe Player -> GridChild Event
 boardElemToGridChild m index elem = GridChild {
@@ -120,8 +120,8 @@ moveToInt32 :: Move -> Int32
 moveToInt32 move = (fromIntegral move) :: Int32
 
 moveToButton :: Player -> Move -> Widget Event
-moveToButton Red move = widget Gtk.Button [#label := "X", on #clicked (MovePlayed move)]
-moveToButton Blue move = widget Gtk.Button [#label := "Y", on #clicked (MovePlayed move)]
+moveToButton Red move = bin Gtk.Button [on #clicked (MovePlayed move)] (widget Gtk.Image [#file := "img/redArrow.png"])
+moveToButton Blue move = bin Gtk.Button [on #clicked (MovePlayed move)] (widget Gtk.Image [#file := "img/blueArrow.png"])
 
 moveToGridChild :: Player -> Move -> GridChild Event
 moveToGridChild player move = GridChild {
@@ -139,8 +139,8 @@ movesToGridChildren player moves = fromList (map (moveToGridChild player) moves)
 
 gameGrid :: GameState -> Bool -> BoxChild Event
 gameGrid gameState@(GameState bs@(BoardSetting m n _) board player) showMoves = container Gtk.Grid [
-    #rowSpacing := ((fromIntegral m) :: Int32),
-    #columnSpacing := ((fromIntegral n) :: Int32)
+    #rowSpacing := 0,
+    #columnSpacing := 0
     ] gridElements where
         gridElements
             | showMoves = (boardToGridChildren m board) Data.Vector.++ (movesToGridChildren player (Game.availableMoves gameState))
