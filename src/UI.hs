@@ -101,8 +101,6 @@ minusButton currVal minVal event =
         #sensitive := (currVal > minVal)
         ]
 
-
-
 boardElemToImage :: Maybe Player -> Widget Event
 boardElemToImage Nothing = widget Gtk.Image [#file := "img/empty.png"]
 boardElemToImage (Just Red) = widget Gtk.Image [#file := "img/red.png"]
@@ -150,8 +148,8 @@ gameGrid gameState@(GameState bs@(BoardSetting m n _) board player) showMoves = 
 
 winInformation :: Maybe Player -> Vector (BoxChild Event)
 winInformation Nothing = []
-winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!", classes ["winInformation", "blue"]]]
-winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!", classes ["winInformation", "red"]]]
+winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!", #marginTop := 8, classes ["winInformation", "blue"]]]
+winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!", #marginTop := 8, classes ["winInformation", "red"]]]
 
 pauseButton :: Maybe Bool -> Vector (BoxChild Event)
 pauseButton Nothing = []
@@ -165,20 +163,18 @@ gameWindow gameState showMoves winningPlayer maybePaused = mainWrapper
       #halign := Gtk.AlignCenter] [
       container Gtk.Box [
           #orientation := Gtk.OrientationVertical, 
-          #halign := Gtk.AlignCenter,
-          #margin := 10
+          #halign := Gtk.AlignCenter
           ] (winInformation winningPlayer),
       container Gtk.Box [
           #orientation := Gtk.OrientationVertical, 
-          #halign := Gtk.AlignCenter,
-          #margin := 10
+          #halign := Gtk.AlignCenter
           ] (pauseButton maybePaused),
       container Gtk.Box [
           #orientation := Gtk.OrientationHorizontal
           ] [
           container Gtk.Box [ -- board container
               #orientation := Gtk.OrientationVertical,
-              #margin := 10
+              #margin := 12
               ] [
               (gameGrid gameState showMoves)
           ]
@@ -201,6 +197,11 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
       #orientation := Gtk.OrientationVertical,
       #margin := 10
       ] [
+      -- banner
+      widget Gtk.Image [
+          #halign := Gtk.AlignCenter, 
+          #file := "img/banner.png"
+      ],
        -- first row (board settings)
       widget Gtk.Label [
           #label := "Board settings: ", 
@@ -304,7 +305,6 @@ view' (ComputerVSComputerWindow gameState redSetting blueSetting speed paused) =
         pauseInformation = case winningPlayer of
             Nothing -> Just paused
             Just _ -> Nothing
-
 
 
 
