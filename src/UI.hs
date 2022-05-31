@@ -3,7 +3,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module UI(State, Event, view', update', initialState') where
+module UI(
+    State (..), 
+    Event (..), 
+    view', 
+    update', 
+    initialState'
+) where
 
 import Game
 import GameConstants
@@ -19,11 +25,13 @@ import Data.Foldable (toList)
 import Data.Int
 import Data.Maybe
 import System.Random
+import Control.Concurrent (threadDelay)
+import Data.Functor (($>))
 
 type PlaySpeed = Int
 
 defaultSpeed :: PlaySpeed
-defaultSpeed = 1
+defaultSpeed = 1000000 -- 1s
 
 data AISetting = AISetting {hiperparameters :: AI.Hiperparameters, generator :: StdGen}
 
@@ -145,8 +153,13 @@ winInformation Nothing = []
 winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!", classes ["winInformation", "blue"]]]
 winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!", classes ["winInformation", "red"]]]
 
-gameWindow :: GameState -> Bool -> Maybe Player -> AppView Gtk.Window Event
-gameWindow gameState showMoves winningPlayer = mainWrapper
+pauseButton :: Maybe Bool -> Vector (BoxChild Event)
+pauseButton Nothing = []
+pauseButton (Just True) = [widget Gtk.Button [#label := "Resume", on #clicked SimulationResumed]]
+pauseButton (Just False) = [widget Gtk.Button [#label := "Pause", on #clicked SimulationPaused]]
+
+gameWindow :: GameState -> Bool -> Maybe Player -> Maybe Bool -> AppView Gtk.Window Event
+gameWindow gameState showMoves winningPlayer maybePaused = mainWrapper
   $ container Gtk.Box [
       #orientation := Gtk.OrientationVertical, 
       #halign := Gtk.AlignCenter] [
@@ -155,6 +168,11 @@ gameWindow gameState showMoves winningPlayer = mainWrapper
           #halign := Gtk.AlignCenter,
           #margin := 10
           ] (winInformation winningPlayer),
+      container Gtk.Box [
+          #orientation := Gtk.OrientationVertical, 
+          #halign := Gtk.AlignCenter,
+          #margin := 10
+          ] (pauseButton maybePaused),
       container Gtk.Box [
           #orientation := Gtk.OrientationHorizontal
           ] [
@@ -272,23 +290,29 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
       ]
   ]
 view' (UserVSUserWindow gameState) = 
-    gameWindow gameState (isNothing winningPlayer) winningPlayer 
+    gameWindow gameState (isNothing winningPlayer) winningPlayer Nothing
     where
         winningPlayer = Game.whoWins gameState
 view' (UserVSComputerWindow gameState@(GameState _ _ currentPlayer) computerColor computerSetting) =
-    gameWindow gameState ((isNothing winningPlayer) && (computerColor /= currentPlayer)) winningPlayer 
+    gameWindow gameState ((isNothing winningPlayer) && (computerColor /= currentPlayer)) winningPlayer Nothing
     where
         winningPlayer = Game.whoWins gameState
 view' (ComputerVSComputerWindow gameState redSetting blueSetting speed paused) =
-    gameWindow gameState False winningPlayer 
+    gameWindow gameState False winningPlayer pauseInformation 
     where
         winningPlayer = Game.whoWins gameState
+        pauseInformation = case winningPlayer of
+            Nothing -> Just paused
+            Just _ -> Nothing
 
 
 
 
 simpleTrans :: State -> Transition State Event
 simpleTrans state = Transition state (pure Nothing)
+
+waitAndEvoke :: Maybe Event -> PlaySpeed -> IO (Maybe Event)
+waitAndEvoke maybeEvent time = threadDelay time $> maybeEvent
 
 update' :: State -> Event -> Transition State Event
 -- closing Window
@@ -314,19 +338,34 @@ update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (BlueSeedC
     simpleTrans (SettingsWindow board redC redD redSeed blueC blueD newBlueSeed)
 -- starting game
 update' (SettingsWindow boardSetting True redD redSeed True blueD blueSeed) StartGame = -- both Computers
-    simpleTrans (ComputerVSComputerWindow (Game.newGame boardSetting) (AISetting (GameConstants.difficultyToHiperparameters redD) (mkStdGen redSeed)) (AISetting (GameConstants.difficultyToHiperparameters blueD) (mkStdGen blueSeed)) defaultSpeed False) -- TODO
+    let
+        redHiperparams = GameConstants.difficultyToHiperparameters redD
+        (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) redHiperparams (AI.newGenerator redSeed)
+        nextMove = case generatedMove of
+            Nothing -> Just (Error "Red cannot choose his first move. This shouldn't happen.")
+            Just generatedMoveFromJust -> Just (MovePlayed generatedMoveFromJust)
+        startingState = 
+            ComputerVSComputerWindow (Game.newGame boardSetting) 
+                (AISetting redHiperparams nextGenerator) 
+                (AISetting (GameConstants.difficultyToHiperparameters blueD) (AI.newGenerator blueSeed)) 
+                defaultSpeed False
+    in
+    Transition startingState (pure nextMove)
 update' (SettingsWindow boardSetting False _ _ False _ _) StartGame = -- both Users
     simpleTrans (UserVSUserWindow (Game.newGame boardSetting))
 update' (SettingsWindow boardSetting False _ _ True blueD blueSeed) StartGame = -- red User, blue Computer
-    simpleTrans (UserVSComputerWindow (Game.newGame boardSetting) (Game.Blue) (AISetting (GameConstants.difficultyToHiperparameters blueD) (mkStdGen blueSeed)))
+    simpleTrans 
+        (UserVSComputerWindow (Game.newGame boardSetting) (Game.Blue) 
+            (AISetting (GameConstants.difficultyToHiperparameters blueD) (AI.newGenerator blueSeed)))
 update' (SettingsWindow boardSetting True redD redSeed False _ _) StartGame = -- red Computer, blue User
     let 
-        (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) (GameConstants.difficultyToHiperparameters redD) (mkStdGen redSeed)
+        redHiperparams = GameConstants.difficultyToHiperparameters redD
+        (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) redHiperparams (AI.newGenerator redSeed)
         nextMove = case generatedMove of
             Nothing -> Just (Error "Red cannot choose his first move. This shouldn't happen.")
             Just generatedMoveFromJust -> Just (MovePlayed generatedMoveFromJust)
     in
-        Transition (UserVSComputerWindow (Game.newGame boardSetting) (Game.Red) (AISetting (GameConstants.difficultyToHiperparameters redD) nextGenerator)) (pure nextMove)
+    Transition (UserVSComputerWindow (Game.newGame boardSetting) (Game.Red) (AISetting redHiperparams nextGenerator)) (pure nextMove)
 -- quitting game
 update' _ EndGame = 
     simpleTrans (defaultSettingsWindow)
@@ -351,9 +390,65 @@ update' (UserVSComputerWindow gameState@(GameState _ _ currentPlayer) computerCo
                         (_ , Nothing) -> Nothing -- there are no possible moves for oponent
                         (Just _, _) -> Nothing -- if move was winning oponent will not have next move
                 in
-                    Transition (UserVSComputerWindow nextState computerColor (AISetting difficulty nextGenerator)) (pure nextMove)
-update' (ComputerVSComputerWindow gameState redSetting blueSetting speed paused) (MovePlayed move) =
-    simpleTrans (ErrorWindow "Not Implemented Yet")
+                Transition (UserVSComputerWindow nextState computerColor (AISetting difficulty nextGenerator)) (pure nextMove)
+-- playing move in computerVSComputerWindow should work only if it is not paused:
+update' (ComputerVSComputerWindow gameState@(GameState _ _ currentPlayer) redSetting@(AISetting redD redG) blueSetting@(AISetting blueD blueG) speed False) (MovePlayed move) =
+    case Game.applyMove gameState move of
+        Nothing -> simpleTrans (ErrorWindow "Invalid move played")
+        Just nextState -> 
+            case currentPlayer of
+                Game.Red ->
+                    let
+                        (generatedMove, nextGenerator) = AI.getNextMove nextState redD redG
+                        nextMove = case (Game.whoWins nextState, generatedMove) of
+                            (Nothing, Just generatedMoveFromJust) -> Just (MovePlayed generatedMoveFromJust) -- oponent will play his next move
+                            (_ , Nothing) -> Nothing -- there are no possible moves for oponent
+                            (Just _, _) -> Nothing -- if move was winning oponent will not have next move
+                        nextWindow = ComputerVSComputerWindow nextState (AISetting redD nextGenerator) (AISetting blueD blueG) speed False
+                    in 
+                    Transition nextWindow (waitAndEvoke nextMove speed)
+                Game.Blue ->
+                    let
+                        (generatedMove, nextGenerator) = AI.getNextMove nextState blueD blueG
+                        nextMove = case (Game.whoWins nextState, generatedMove) of
+                            (Nothing, Just generatedMoveFromJust) -> Just (MovePlayed generatedMoveFromJust) -- oponent will play his next move
+                            (_ , Nothing) -> Nothing -- there are no possible moves for oponent
+                            (Just _, _) -> Nothing -- if move was winning oponent will not have next move
+                        nextWindow = ComputerVSComputerWindow nextState (AISetting redD redG) (AISetting blueD nextGenerator) speed False
+                    in 
+                    Transition nextWindow (waitAndEvoke nextMove speed)
+-- but, when we pause ComputerVSComputerWindow there can still be one MovePlayed action waiting in the background - we want to ignore it:
+update' cvscw@(ComputerVSComputerWindow _ _ _ _ True) (MovePlayed _) =
+    simpleTrans cvscw
+-- also when we go back to main menu from ComputerVSComputerWindow there can still be one MovePlayed action waiting in the background - we want to ignore it:
+update' sw@(SettingsWindow{..}) (MovePlayed _) =
+    simpleTrans sw
+-- pausing
+update' (ComputerVSComputerWindow gameState redSetting blueSetting speed paused) SimulationPaused = 
+    simpleTrans (ComputerVSComputerWindow gameState redSetting blueSetting speed True)
+-- resuming
+update' (ComputerVSComputerWindow gameState@(GameState _ _ currentPlayer) redSetting@(AISetting redD redG) blueSetting@(AISetting blueD blueG) speed paused) SimulationResumed = 
+    case currentPlayer of
+        Game.Red ->
+            let
+                (generatedMove, nextGenerator) = AI.getNextMove gameState redD redG
+                nextMove = case (Game.whoWins gameState, generatedMove) of
+                    (Nothing, Just generatedMoveFromJust) -> Just (MovePlayed generatedMoveFromJust) -- oponent will play his next move
+                    (_ , Nothing) -> Nothing -- there are no possible moves for oponent
+                    (Just _, _) -> Nothing -- if move was winning oponent will not have next move
+                nextWindow = ComputerVSComputerWindow gameState (AISetting redD nextGenerator) (AISetting blueD blueG) speed False
+            in 
+            Transition nextWindow (waitAndEvoke nextMove speed)
+        Game.Blue ->
+            let
+                (generatedMove, nextGenerator) = AI.getNextMove gameState blueD blueG
+                nextMove = case (Game.whoWins gameState, generatedMove) of
+                    (Nothing, Just generatedMoveFromJust) -> Just (MovePlayed generatedMoveFromJust) -- oponent will play his next move
+                    (_ , Nothing) -> Nothing -- there are no possible moves for oponent
+                    (Just _, _) -> Nothing -- if move was winning oponent will not have next move
+                nextWindow = ComputerVSComputerWindow gameState (AISetting redD redG) (AISetting blueD nextGenerator) speed False
+            in 
+            Transition nextWindow (waitAndEvoke nextMove speed)
 --- errors
 update' _ (Error text) =
     simpleTrans (ErrorWindow text)
@@ -361,6 +456,8 @@ update' _ (Error text) =
 update' _ _ =
     simpleTrans (ErrorWindow "This shouldn't happen.")
 
+
+--- Jak doprowadzić do błędu: otworzyć ComputerVSComputer, wrócić do menu i szybko zacząć nową grę - w grze pojawi się jeden ruch, który nie powinien się pojawić - był to oczekujący ruch z symulacji ComputerVSComputer, którego cooldown nie zdążył minąć zanim włączyliśmy drugą grę
 
 initialState' :: State
 initialState' = defaultSettingsWindow

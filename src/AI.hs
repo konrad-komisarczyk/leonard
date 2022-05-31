@@ -5,6 +5,12 @@ import System.Random
 
 type Hiperparameters = Int
 
+type Generator = StdGen
+
+newGenerator :: Int -> Generator
+newGenerator = mkStdGen
+
+
 getNextMove :: RandomGen g => GameState -> Hiperparameters -> g -> (Maybe Move, g)
 getNextMove gameState _ generator =
     (Just (moves !! rand), nextGenerator)
