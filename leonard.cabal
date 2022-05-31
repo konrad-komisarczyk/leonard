@@ -24,6 +24,7 @@ executable leonard
       Game
       GameConstants
       UI
+      UI2
       Paths_leonard
   hs-source-dirs:
       src
