@@ -25,7 +25,7 @@ import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import GI.Gtk.Declarative.Container.Grid
 import qualified Data.Sequence as Seq
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, append)
 import Data.Vector (Vector, fromList, (++))
 import Data.Foldable (toList)
 import Data.Int
@@ -34,13 +34,16 @@ import System.Random
 import Control.Concurrent (threadDelay)
 
 
--- | Type representing delay between moves in Computer VS Computer game
-type PlaySpeed = Int
-
 -- | Default delay between moves in Computer VS Computer game.
 -- | Set to 1 second
-defaultSpeed :: PlaySpeed
-defaultSpeed = 1000000
+defaultSpeed :: Int
+defaultSpeed = 5
+
+minSpeed :: Int
+minSpeed = 0
+
+maxSpeed :: Int
+maxSpeed = 100
 
 -- | Type containing parameters for the MCTS AI player function. 
 data AISetting = 
@@ -63,7 +66,8 @@ data State
         redSeed :: Int,
         isBlueComputer :: Bool, 
         blueDifficulty :: GameConstants.Difficulty,
-        blueSeed :: Int}
+        blueSeed :: Int,
+        speed :: Int}
     -- | User VS User game window.
     -- | Shows: game board, buttons with available moves, winner information when a player wins, "Back to menu" button.
     -- | Users can play moves clicking corresponding buttons. After every move game board is immediately refreshed.
@@ -85,7 +89,7 @@ data State
         gameState :: Game.GameState, 
         red :: AISetting, 
         blue :: AISetting, 
-        speed :: PlaySpeed, 
+        speed :: Int, 
         paused :: Bool}
     -- | Error window containing single error message.
     -- | State should not be reachable in the application.
@@ -107,6 +111,7 @@ data Event
     | BlueDifficultyChanged GameConstants.Difficulty
     | RedSeedChanged Int
     | BlueSeedChanged Int
+    | SpeedChanged Int
     | StartGame 
     -- | Game events: 
     -- | Should appear only in one of the game windows
@@ -117,7 +122,7 @@ data Event
 
 -- | Default values of SettingsWindow State
 defaultSettingsWindow :: State
-defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False GameConstants.defaultDifficulty 137 False GameConstants.defaultDifficulty 213
+defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False GameConstants.defaultDifficulty 137 False GameConstants.defaultDifficulty 213 defaultSpeed
 
 -- | Window containing whole application
 mainWrapper 
@@ -286,7 +291,7 @@ view' :: State -> AppView Gtk.Window Event
 view' (ErrorWindow message) = 
     mainWrapper $ widget Gtk.Label [#label := message]
 -- Settings window
-view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSeed isBlueComputer blueD blueSeed) = 
+view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSeed isBlueComputer blueD blueSeed speed) = 
     mainWrapper $ container Gtk.Box [
       #orientation := Gtk.OrientationVertical,
       #margin := 10
@@ -349,10 +354,13 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           widget Gtk.Label [#label := "Red: ", classes ["settingsLabel", "red"]], 
           container Gtk.Box [#spacing := 8] (if isRedComputer then [
               widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)],
-              widget Gtk.Label [#label := "Difficulty: "],
+              widget Gtk.Label [#label := "Difficulty:"],
               minusButton redD GameConstants.minDifficulty (\a -> RedDifficultyChanged a),
               widget Gtk.Label [#label := (GameConstants.difficultyName redD)],
-              plusButton redD GameConstants.maxDifficulty (\a -> RedDifficultyChanged a)
+              plusButton redD GameConstants.maxDifficulty (\a -> RedDifficultyChanged a),
+              widget Gtk.Label [#label := "Seed:"],
+              widget Gtk.Label [#label := (Data.Text.pack (show redSeed))],
+              widget Gtk.Button [#label := "🎲", on #clicked (RedSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen redSeed))))]
           ]
           else [
               widget Gtk.Button [#label := "Player", on #clicked (RedTypeChanged True)]
@@ -366,15 +374,28 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel", "blue"]], 
           container Gtk.Box [#spacing := 8] (if isBlueComputer then [
               widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)],
-              widget Gtk.Label [#label := "Difficulty: "],
+              widget Gtk.Label [#label := "Difficulty:"],
               minusButton blueD GameConstants.minDifficulty (\a -> BlueDifficultyChanged a),
               widget Gtk.Label [#label := (GameConstants.difficultyName blueD)],
-              plusButton blueD GameConstants.maxDifficulty (\a -> BlueDifficultyChanged a)
+              plusButton blueD GameConstants.maxDifficulty (\a -> BlueDifficultyChanged a),
+              widget Gtk.Label [#label := "Seed:"],
+              widget Gtk.Label [#label := (Data.Text.pack (show blueSeed))],
+              widget Gtk.Button [#label := "🎲", on #clicked (BlueSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen blueSeed))))]
           ]
           else [
               widget Gtk.Button [#label := "Player", on #clicked (BlueTypeChanged True)]
           ])
       ],
+      container Gtk.Box [ -- speed settings
+          #orientation := Gtk.OrientationHorizontal,
+          #marginTop := 8,
+          #spacing := 8
+      ] (if isBlueComputer && isRedComputer then [
+            widget Gtk.Label [#label := "Delay between moves: "],
+            minusButton speed minSpeed (\a -> SpeedChanged a),
+            widget Gtk.Label [#label := ((Data.Text.pack (show ((fromIntegral speed) / 10))) `Data.Text.append` "s")],
+            plusButton speed maxSpeed (\a -> SpeedChanged a)
+          ] else []),
       widget Gtk.Separator [
           #margin := 16],
        -- third row (containing start game button)
@@ -406,8 +427,8 @@ simpleTrans :: State -> Transition State Event
 simpleTrans state = Transition state (pure Nothing)
 
 -- | Wait given time and return given MaybeEvent.
-waitAndEvoke :: Maybe Event -> PlaySpeed -> IO (Maybe Event)
-waitAndEvoke maybeEvent time = threadDelay time >> pure maybeEvent
+waitAndEvoke :: Maybe Event -> Int -> IO (Maybe Event)
+waitAndEvoke maybeEvent time = threadDelay (time * 100 * 1000) >> pure maybeEvent
 
 -- | For a given state and an event returns Transition to a next state.
 -- | Transition contains next state and does some IO action that may result in a next event that will be evoken.
@@ -415,26 +436,28 @@ update' :: State -> Event -> Transition State Event
 -- closing Window
 update' _ Closed = Exit
 -- setting field values in Settings Window
-update' (SettingsWindow (Game.BoardSetting m n k) redC redD redSeed blueC blueD blueSeed) (MChanged newM) = 
-    simpleTrans (SettingsWindow (Game.BoardSetting newM n k) redC redD redSeed blueC blueD blueSeed)
-update' (SettingsWindow (Game.BoardSetting m n k) redC redD redSeed blueC blueD blueSeed) (NChanged newN) = 
-    simpleTrans (SettingsWindow (Game.BoardSetting m newN k) redC redD redSeed blueC blueD blueSeed) 
-update' (SettingsWindow (Game.BoardSetting m n k) redC redD redSeed blueC blueD blueSeed) (KChanged newK) = 
-    simpleTrans (SettingsWindow (Game.BoardSetting m n newK) redC redD redSeed blueC blueD blueSeed)
-update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (RedTypeChanged newRedC) =
-    simpleTrans (SettingsWindow board newRedC redD redSeed blueC blueD blueSeed)
-update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (BlueTypeChanged newBlueC) =
-    simpleTrans (SettingsWindow board redC redD redSeed newBlueC blueD blueSeed)
-update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (RedDifficultyChanged newRedD) =
-    simpleTrans (SettingsWindow board redC newRedD redSeed blueC blueD blueSeed)
-update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (BlueDifficultyChanged newBlueD) =
-    simpleTrans (SettingsWindow board redC redD redSeed blueC newBlueD blueSeed)
-update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (RedSeedChanged newRedSeed) =
-    simpleTrans (SettingsWindow board redC redD newRedSeed blueC blueD blueSeed)
-update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed) (BlueSeedChanged newBlueSeed) =
-    simpleTrans (SettingsWindow board redC redD redSeed blueC blueD newBlueSeed)
+update' (SettingsWindow (Game.BoardSetting m n k) redC redD redSeed blueC blueD blueSeed speed) (MChanged newM) = 
+    simpleTrans (SettingsWindow (Game.BoardSetting newM n k) redC redD redSeed blueC blueD blueSeed speed)
+update' (SettingsWindow (Game.BoardSetting m n k) redC redD redSeed blueC blueD blueSeed speed) (NChanged newN) = 
+    simpleTrans (SettingsWindow (Game.BoardSetting m newN k) redC redD redSeed blueC blueD blueSeed speed) 
+update' (SettingsWindow (Game.BoardSetting m n k) redC redD redSeed blueC blueD blueSeed speed) (KChanged newK) = 
+    simpleTrans (SettingsWindow (Game.BoardSetting m n newK) redC redD redSeed blueC blueD blueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (RedTypeChanged newRedC) =
+    simpleTrans (SettingsWindow board newRedC redD redSeed blueC blueD blueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (BlueTypeChanged newBlueC) =
+    simpleTrans (SettingsWindow board redC redD redSeed newBlueC blueD blueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (RedDifficultyChanged newRedD) =
+    simpleTrans (SettingsWindow board redC newRedD redSeed blueC blueD blueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (BlueDifficultyChanged newBlueD) =
+    simpleTrans (SettingsWindow board redC redD redSeed blueC newBlueD blueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (RedSeedChanged newRedSeed) =
+    simpleTrans (SettingsWindow board redC redD newRedSeed blueC blueD blueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (BlueSeedChanged newBlueSeed) =
+    simpleTrans (SettingsWindow board redC redD redSeed blueC blueD newBlueSeed speed)
+update' (SettingsWindow board redC redD redSeed blueC blueD blueSeed speed) (SpeedChanged newSpeed) =
+    simpleTrans (SettingsWindow board redC redD redSeed blueC blueD blueSeed newSpeed)
 -- starting game
-update' (SettingsWindow boardSetting True redD redSeed True blueD blueSeed) StartGame = -- both Computers
+update' (SettingsWindow boardSetting True redD redSeed True blueD blueSeed speed) StartGame = -- both Computers
     let
         redHiperparams = GameConstants.difficultyToHiperparameters redD
         (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) redHiperparams (AI.newGenerator redSeed)
@@ -445,16 +468,16 @@ update' (SettingsWindow boardSetting True redD redSeed True blueD blueSeed) Star
             ComputerVSComputerWindow (Game.newGame boardSetting) 
                 (AISetting redHiperparams nextGenerator) 
                 (AISetting (GameConstants.difficultyToHiperparameters blueD) (AI.newGenerator blueSeed)) 
-                defaultSpeed False
+                speed False
     in
     Transition startingState (pure nextMove)
-update' (SettingsWindow boardSetting False _ _ False _ _) StartGame = -- both Users
+update' (SettingsWindow boardSetting False _ _ False _ _ _) StartGame = -- both Users
     simpleTrans (UserVSUserWindow (Game.newGame boardSetting))
-update' (SettingsWindow boardSetting False _ _ True blueD blueSeed) StartGame = -- red User, blue Computer
+update' (SettingsWindow boardSetting False _ _ True blueD blueSeed _) StartGame = -- red User, blue Computer
     simpleTrans 
         (UserVSComputerWindow (Game.newGame boardSetting) (Game.Blue) 
             (AISetting (GameConstants.difficultyToHiperparameters blueD) (AI.newGenerator blueSeed)))
-update' (SettingsWindow boardSetting True redD redSeed False _ _) StartGame = -- red Computer, blue User
+update' (SettingsWindow boardSetting True redD redSeed False _ _ _) StartGame = -- red Computer, blue User
     let 
         redHiperparams = GameConstants.difficultyToHiperparameters redD
         (generatedMove, nextGenerator) = AI.getNextMove (Game.newGame boardSetting) redHiperparams (AI.newGenerator redSeed)
@@ -553,10 +576,14 @@ update' _ (Error text) =
 update' _ _ =
     simpleTrans (ErrorWindow "This shouldn't happen.")
 
-
---- Jak doprowadzić do błędu: otworzyć ComputerVSComputer, wrócić do menu i szybko zacząć nową grę - w grze pojawi się jeden ruch, który nie powinien się pojawić - był to oczekujący ruch z symulacji ComputerVSComputer, którego cooldown nie zdążył minąć zanim włączyliśmy drugą grę
-
 -- | Initial state of the application. 
 -- | Application starts with the SettingsWindow.
 initialState' :: State
 initialState' = defaultSettingsWindow
+
+
+
+
+--- Jak doprowadzić do błędu: otworzyć ComputerVSComputer, wrócić do menu i szybko zacząć nową grę - w grze pojawi się jeden ruch, który nie powinien się pojawić - był to oczekujący ruch z symulacji ComputerVSComputer, którego cooldown nie zdążył minąć zanim włączyliśmy drugą grę
+--- Pauzowanie zmienia losowość!
+
