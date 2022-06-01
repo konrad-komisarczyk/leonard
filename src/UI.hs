@@ -28,15 +28,29 @@ import System.Random
 import Control.Concurrent (threadDelay)
 import Data.Functor (($>))
 
+
+-- | Type representing delay between moves in Computer VS Computer game
 type PlaySpeed = Int
 
+-- | Default delay between moves in Computer VS Computer game.
+-- | Set to 1 second
 defaultSpeed :: PlaySpeed
-defaultSpeed = 1000000 -- 1s
+defaultSpeed = 1000000
 
-data AISetting = AISetting {hiperparameters :: AI.Hiperparameters, generator :: StdGen}
+-- | Type containing parameters for the MCTS AI player function. 
+data AISetting = 
+    AISetting {
+        -- | Hyperparameters for the MCTS AI player function. 
+        -- | Set based on the chosen AI difficulty. Constant during the game.
+        hiperparameters :: AI.Hiperparameters, 
+        -- | Random number generator state. Changes after every AI move.
+        generator :: AI.Generator
+    }
 
-
+-- | Application states. 
+-- | Each state corresponds to one type of window application can render and values that have to be stored in that state.
 data State 
+    -- | Main menu window
     = SettingsWindow {
         boardSetting :: Game.BoardSetting, 
         isRedComputer :: Bool, 
@@ -45,39 +59,66 @@ data State
         isBlueComputer :: Bool, 
         blueDifficulty :: GameConstants.Difficulty,
         blueSeed :: Int}
+    -- | User VS User game window.
+    -- | Shows: game board, buttons with available moves, winner information when a player wins, "Back to menu" button.
+    -- | Users can play moves clicking corresponding buttons. After every move game board is immediately refreshed.
     | UserVSUserWindow {
-        gameState :: Game.GameState} 
+        gameState :: Game.GameState}
+    -- | User VS User game window. 
+    -- | Shows: game board, buttons with available moves when its Users turn, winner information when a player wins, "Back to menu" button.
+    -- | User can play moves clicking corresponding buttons. 
+    -- | After every move game board is immediately refreshed, then immediately Computer plays his move and board is refreshed again.
     | UserVSComputerWindow {
         gameState :: Game.GameState, 
         computerColor :: Game.Player, 
         computerSetting :: AISetting} 
+    -- | Computer VS Computer game window. Also called Simulation. 
+    -- | Shows: game board, "Pause"/"Resume" button, winner information when a player wins, "Back to menu" button.
+    -- | Computer players play moves alternately. There is added a fixed delay 'speed' between the moves. Immediately after every move the board is refreshed.
+    -- | Simulation can be paused and resumed any time.
     | ComputerVSComputerWindow {
         gameState :: Game.GameState, 
         red :: AISetting, 
         blue :: AISetting, 
         speed :: PlaySpeed, 
         paused :: Bool}
+    -- | Error window containing single error message.
+    -- | State should not be reachable in the application.
     | ErrorWindow {
         message :: Text}
+
 
 data Event 
     = Closed 
     | Error Text
-    | StartGame | EndGame 
-    | MovePlayed Game.Move | AwaitingComputerMove
-    | SimulationPaused | SimulationResumed
-    | MChanged Int | NChanged Int | KChanged Int
+    -- | Settings modification events: (Evoked every time value is changed in the SettingsWindow) 
+    -- | Each *Changed event is parametrized by the new value setting should take
+    | MChanged Int 
+    | NChanged Int 
+    | KChanged Int
     | RedTypeChanged Bool 
     | BlueTypeChanged Bool 
     | RedDifficultyChanged GameConstants.Difficulty
     | BlueDifficultyChanged GameConstants.Difficulty
     | RedSeedChanged Int
     | BlueSeedChanged Int
+    | StartGame 
+    -- | Game events: 
+    -- | Should appear only in one of the game windows
+    | EndGame 
+    | MovePlayed Game.Move
+    | SimulationPaused 
+    | SimulationResumed
 
+-- | Default values of SettingsWindow State
 defaultSettingsWindow :: State
 defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False GameConstants.defaultDifficulty 137 False GameConstants.defaultDifficulty 213
 
-mainWrapper :: Widget Event -> AppView Gtk.Window Event
+-- | Window containing whole application
+mainWrapper 
+    -- | Content of the window. Single widget, usually a Box containing all the children.
+    :: Widget Event 
+    -> AppView Gtk.Window Event
 mainWrapper child = bin Gtk.Window
   [ #title := "λeonard", 
   on #deleteEvent (const (True, Closed)), 
@@ -85,7 +126,17 @@ mainWrapper child = bin Gtk.Window
   ]
   $ child
 
-plusButton :: Int -> Int -> (Int -> Event) -> BoxChild Event
+-- | Button with "+" label evoking Int parametrized event modyfing a variable. 
+-- | Inactive when value of a given variable would exceed given bound.
+plusButton 
+    -- | 'currVal' - Current value of the variable button modifies
+    :: Int 
+    -- | Max value of the variable button modifies
+    -> Int 
+    -- | 'event' - Function for a given 'val' Int returning event modyfing the variable to a 'val' value.
+    -> (Int -> Event) 
+    -- | Resulting Button widget. Clicking button evokes 'event (currVal + 1)'
+    -> BoxChild Event
 plusButton currVal maxVal event = 
     widget Gtk.Button [
         #label := "+", 
@@ -93,7 +144,17 @@ plusButton currVal maxVal event =
         #sensitive := (currVal < maxVal)
         ]
 
-minusButton :: Int -> Int -> (Int -> Event) -> BoxChild Event
+-- | Button with "-" label evoking Int parametrized event modyfing a variable. 
+-- | Inactive when value of a given variable would exceed given bound.
+minusButton 
+    -- | 'currVal' - Current value of the variable button modifies
+    :: Int 
+    -- | Min value of the variable button modifies
+    -> Int 
+    -- | 'event' - Function for a given 'val' Int returning event modyfing the variable to a 'val' value.
+    -> (Int -> Event) 
+    -- | Resulting Button widget. Clicking button evokes 'event (currVal - 1)'
+    -> BoxChild Event
 minusButton currVal minVal event = 
     widget Gtk.Button [
         #label := "-", 
@@ -101,12 +162,23 @@ minusButton currVal minVal event =
         #sensitive := (currVal > minVal)
         ]
 
+-- | Map board field value to an appropiate image representing token or empty field
 boardElemToImage :: Maybe Player -> Widget Event
 boardElemToImage Nothing = widget Gtk.Image [#file := "img/empty.png"]
 boardElemToImage (Just Red) = widget Gtk.Image [#file := "img/red.png"]
 boardElemToImage (Just Blue) = widget Gtk.Image [#file := "img/blue.png"]
 
-boardElemToGridChild :: Int -> Int -> Maybe Player -> GridChild Event
+
+-- | Map a board field to a Grid child containing image representing appropiate token or empty field
+boardElemToGridChild 
+    -- | number of rows
+    :: Int 
+    -- | index of the field in the BoardState Sequence
+    -> Int 
+    -- | value of the field in the BoardState Sequence
+    -> Maybe Player 
+    -- | resulting Grid child
+    -> GridChild Event
 boardElemToGridChild m index elem = GridChild {
     properties = defaultGridChildProperties {
         width = 1, height = 1, 
@@ -116,13 +188,19 @@ boardElemToGridChild m index elem = GridChild {
     child = (boardElemToImage elem)
 }
 
-boardToGridChildren :: Int -> BoardState -> Vector (GridChild Event)
+-- | Map board state to Vector of Grid children containing images representing appropiate tokens or empty fields
+boardToGridChildren 
+    -- | number of rows
+    :: Int 
+    -> BoardState -> Vector (GridChild Event)
 boardToGridChildren m board = fromList (toList (Seq.mapWithIndex (boardElemToGridChild m) board))
 
+-- | Map a single move to a button. Clicking that button will evoke 'MovePlayed' event.
 moveToButton :: Player -> Move -> Widget Event
 moveToButton Red move = bin Gtk.Button [on #clicked (MovePlayed move), #margin := 4] (widget Gtk.Image [#file := "img/redArrow.png"])
 moveToButton Blue move = bin Gtk.Button [on #clicked (MovePlayed move), #margin := 4] (widget Gtk.Image [#file := "img/blueArrow.png"])
 
+-- | Map a single move to Grid element containing move button
 moveToGridChild :: Player -> Move -> GridChild Event
 moveToGridChild player move = GridChild {
     properties = defaultGridChildProperties {
@@ -133,11 +211,15 @@ moveToGridChild player move = GridChild {
     child = (moveToButton player move)
 }
 
+-- | Map moves to Grid elements containing move buttons
 movesToGridChildren :: Player -> [Move] -> Vector (GridChild Event)
 movesToGridChildren player moves = fromList (map (moveToGridChild player) moves)
 
-
-gameGrid :: GameState -> Bool -> BoxChild Event
+-- | Map game state to Grid widget
+gameGrid :: GameState 
+    -- | Whether to show move buttons at the top of the grid. Buttons should be shown only if it's Users turn. 
+    -> Bool 
+    -> BoxChild Event
 gameGrid gameState@(GameState bs@(BoardSetting m n _) board player) showMoves = container Gtk.Grid [
     #rowSpacing := 0,
     #columnSpacing := 0
@@ -146,11 +228,18 @@ gameGrid gameState@(GameState bs@(BoardSetting m n _) board player) showMoves = 
             | showMoves = (boardToGridChildren m board) Data.Vector.++ (movesToGridChildren player (Game.availableMoves gameState))
             | otherwise = boardToGridChildren m board
 
+-- | Content of win information box in game window.
+-- | For Nothing returns empty vector
+-- | For Just Player returns vector with single label saying, that given player wins
 winInformation :: Maybe Player -> Vector (BoxChild Event)
 winInformation Nothing = []
 winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!", #marginTop := 8, classes ["winInformation", "blue"]]]
 winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!", #marginTop := 8, classes ["winInformation", "red"]]]
 
+-- | Content of pause button box in game window.
+-- | For Nothing returns empty vector
+-- | For Just True returns vector with single "Resume" button
+-- | For Just False returns vector with single "Pause" button
 pauseButton :: Maybe Bool -> Vector (BoxChild Event)
 pauseButton Nothing = []
 pauseButton (Just True) = [widget Gtk.Button [#label := "Resume", on #clicked SimulationResumed]]
@@ -186,7 +275,7 @@ gameWindow gameState showMoves winningPlayer maybePaused = mainWrapper
       ]
   ]
 
-
+-- | Returns a render of a given state
 view' :: State -> AppView Gtk.Window Event
 -- Error window
 view' (ErrorWindow message) = 
@@ -307,13 +396,16 @@ view' (ComputerVSComputerWindow gameState redSetting blueSetting speed paused) =
             Just _ -> Nothing
 
 
-
+-- | Just transition to a given state not doing any IO action or producing any more events.
 simpleTrans :: State -> Transition State Event
 simpleTrans state = Transition state (pure Nothing)
 
+-- | Wait given time and return given MaybeEvent.
 waitAndEvoke :: Maybe Event -> PlaySpeed -> IO (Maybe Event)
 waitAndEvoke maybeEvent time = threadDelay time $> maybeEvent
 
+-- | For a given state and an event returns Transition to a next state.
+-- | Transition contains next state and does some IO action that may result in a next event that will be evoken.
 update' :: State -> Event -> Transition State Event
 -- closing Window
 update' _ Closed = Exit
@@ -459,5 +551,7 @@ update' _ _ =
 
 --- Jak doprowadzić do błędu: otworzyć ComputerVSComputer, wrócić do menu i szybko zacząć nową grę - w grze pojawi się jeden ruch, który nie powinien się pojawić - był to oczekujący ruch z symulacji ComputerVSComputer, którego cooldown nie zdążył minąć zanim włączyliśmy drugą grę
 
+-- | Initial state of the application. 
+-- | Application starts with the SettingsWindow.
 initialState' :: State
 initialState' = defaultSettingsWindow
