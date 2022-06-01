@@ -3,6 +3,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
+{-|
+Module      : UI
+Description : UI rendering functions
+
+Provides types and functions needed to render λeonard app with gi-gtk-declarative-app-simple framework.
+-}
 module UI(
     State (..), 
     Event (..), 
