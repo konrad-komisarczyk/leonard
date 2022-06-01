@@ -71,14 +71,18 @@ newGame :: BoardSetting -> GameState
 newGame bs@(BoardSetting m n _) = GameState bs (Seq.replicate (m * n) Nothing) Red
 
 
--- | Checks whether game representation is a valid state. Checks:
--- | * whether size of the board matches game parameters
--- | * whether tokens in all columns are gravitated towards the bottom
+-- | Checks whether game representation is a valid state. Checks:  
+-- |     
+-- | * whether size of the board matches game parameters      
+-- |
+-- | * whether tokens in all columns are gravitated towards the bottom     
+-- |  
 -- | Doesn't check if game was already won by one of the players in the past. Particularly, there can be more than one winner.
+-- | O(m * n)
 isCorrect :: GameState -> Bool
 isCorrect (GameState (BoardSetting m n k) board _) = 
     (isSizeCorrect m n k board) && (haveTokensFallen board) where
-        isSizeCorrect m n k board = ((Seq.length board) == (m * n)) && (m >= k) && (n >= k)
+        isSizeCorrect m n k board = ((Seq.length board) == (m * n)) && (m >= k) && (n >= k) && (k > 0)
         haveTokensFallen board = all haveTokensFallenColumn (Seq.chunksOf m board) where
             haveTokensFallenColumn column = fst (foldl checkLighter (True, Just Red) column) where
                 checkLighter (False, _) _ = (False, Nothing)
@@ -87,44 +91,79 @@ isCorrect (GameState (BoardSetting m n k) board _) =
                 checkLighter (True, Nothing) (Just _) = (False, Nothing)
 
 
--- | Maps position on the board to the position in BoardState Sequence.
-positionToElement 
-    -- | Position on the board.
-    :: (Int, Int)
-    -- | Number of rows in the game 
+
+-- | Type representing position on the board. Used only for win checking.
+-- | 1st postion is number of row, 2nd position is number of column
+type Position = (Int, Int)
+
+-- | Adds two positions. Used for moving from position into given direction.
+-- | Direction is one of positions (0, 1), (1, 0), (1, 1), (-1, 1)
+add :: Position -> Position -> Position
+add (a, b) (c, d) = (a + c, b + d)
+
+-- | Returns Just 'element' - element of board at given position, or Nothing if the position is out of the board
+selectByPosition :: GameState -> Position -> Maybe (Maybe Player)
+selectByPosition (GameState (BoardSetting m _ _) board _) (i, j) = 
+    Seq.lookup (m * j + i) board
+
+-- | Checks whether a given positions on the board contains token of given player
+checkPos :: GameState -> Player -> Position -> Bool
+checkPos gameState player position =
+    case selectByPosition gameState position of
+        Just (Just token) -> token == player
+        otherwise -> False
+
+-- | Board positions that can be a starting position for a winning line into vertical direction
+verticalStarts :: BoardSetting -> [Position]
+verticalStarts (BoardSetting m n k) = [(x - 1, y - 1) | x <- [1 .. m - (k - 1)], y <- [1 .. n]]
+
+verticalDirection :: Position
+verticalDirection = (1, 0)
+
+-- | Board positions that can be a starting position for a winning line into horizontal direction
+horizontalStarts :: BoardSetting -> [Position]
+horizontalStarts (BoardSetting m n k) = [(x - 1, y - 1) | x <- [1 .. m], y <- [1 .. n - (k - 1)]]
+
+horizontalDirection :: Position
+horizontalDirection = (0, 1)
+
+-- | Board positions that can be a starting position for a winning line into diagonal direction
+diagonalStarts :: BoardSetting -> [Position]
+diagonalStarts (BoardSetting m n k) = [(x - 1, y - 1) | x <- [1 .. m - (k - 1)], y <- [1 .. n - (k - 1)]]
+
+diagonalDirection :: Position
+diagonalDirection = (1, 1)
+
+-- | Board positions that can be a starting position for a winning line into antidiagonal direction
+antidiagonalStarts :: BoardSetting -> [Position]
+antidiagonalStarts (BoardSetting m n k) = [(x - 1, y - 1) | x <- [1 + (k - 1) .. m], y <- [1 .. n - (k - 1)]]
+
+antidiagonalDirection :: Position
+antidiagonalDirection = (-1, 1)
+
+-- | Checks whether given position starts a winning line into given direction for a given player
+checkPosIntoDirection
+    -- | direction
+    :: Position 
+    -- | k
     -> Int 
-    -- | Position in the Sequence.
-    -> Int
-positionToElement (i, j) m = m * i + j
+    -> GameState -> Player -> Position -> Bool
+--checkPosIntoDirection _ 0 _ _ _ = False -- Should never happen with correct k > 0
+checkPosIntoDirection _ 1 gs player position = checkPos gs player position
+checkPosIntoDirection direction k gs player position = 
+    (checkPos gs player position) && (checkPosIntoDirection direction (k - 1) gs player (add position direction))
 
-checkPosition :: (Int, Int) -> GameState -> Player -> Bool
-checkPosition position (GameState (BoardSetting m n _) board _) player = 
-    case Seq.lookup (positionToElement position m) board of
-        Nothing -> False
-        Just x -> (x == (Just player))
+-- | Checks whether one of given positions starts a winning line into given direction for a given player
+checkPositions :: GameState -> Player -> Position -> [Position] -> Bool
+checkPositions gs@(GameState (BoardSetting _ _ k) _ _) player direction = any (checkPosIntoDirection direction k gs player)
 
-checkPositionsDirection :: (Int, Int) -> Int -> (Int, Int) -> GameState -> Player -> Bool
-checkPositionsDirection _ 0 position gs player = checkPosition position gs player
-checkPositionsDirection (v, h) k (i, j) gs player = 
-    (checkPosition (i + v, j + h) gs player) && (checkPositionsDirection (v, h) (k - 1) (i + v, j + h) gs player)
-
-checkAllWithinSquareDirection :: (Int, Int) -> (Int, Int) -> (Int, Int) -> Int -> GameState -> Player -> Bool
-checkAllWithinSquareDirection (down, left) (up, right) direction k gs player
-    | left >= right = False
-    | otherwise = 
-         (checkAllWithinColumnpartDirection left down up direction k gs player) || (checkAllWithinSquareDirection (down, left + 1) (up, right) direction k gs player) 
-     where
-        checkAllWithinColumnpartDirection column down up direction k gs player
-            | down >= up = False
-            | otherwise = (checkPositionsDirection direction k (column, down) gs player) || (checkAllWithinColumnpartDirection column (down + 1) up direction k gs player)
-
--- | Checks whether game state is won for a given player
+-- | Returns whether given player has a winning line
 doesPlayerWin :: GameState -> Player -> Bool
-doesPlayerWin gs@(GameState (BoardSetting m n k) b _) player = 
-    (checkAllWithinSquareDirection (0, 0) (m - 1, n - k) (0, 1) (k - 1) gs player) || -- horizontal
-    (checkAllWithinSquareDirection (0, 0) (m - k, n - 1) (1, 0) (k - 1) gs player) || -- vertical
-    (checkAllWithinSquareDirection (0, 0) (m - k, n - k) (1, 1) (k - 1) gs player) || -- diagonal
-    (checkAllWithinSquareDirection (0, k - 1) (m - k, n - 1) (1, -1) (k - 1) gs player) -- antidiagonal
+doesPlayerWin gs@(GameState bs _ _) player =
+    (checkPositions gs player horizontalDirection (horizontalStarts bs)) ||
+    (checkPositions gs player verticalDirection (verticalStarts bs)) ||
+    (checkPositions gs player diagonalDirection (diagonalStarts bs)) ||
+    (checkPositions gs player antidiagonalDirection (antidiagonalStarts bs))
 
 -- | Returns one of the winners of a given game.
 -- | 'Nothing' if there is no winnner yet
@@ -138,11 +177,13 @@ whoWins gameState
     | otherwise = Nothing
 
 -- | Returns list of available moves for a given game.
--- | Available moves are columns that are not full.
+-- | Available moves are columns that have their top field empty.
 -- | For performance purposes doesn't check correctness of the game.
+-- | O(n * log(m + n))
 availableMoves :: GameState -> [Move]
 availableMoves (GameState (BoardSetting m n k) board _) = 
-    Seq.findIndicesL (any Data.Maybe.isNothing) (Seq.chunksOf m board)
+    -- Seq.findIndicesL (any Data.Maybe.isNothing) (Seq.chunksOf m board) -- different solution
+    filter (\column -> Data.Maybe.isNothing (Seq.index board (m * column + m - 1))) [0 .. n - 1]
 
 -- | For given player a player that will move next.
 oponent :: Player -> Player
@@ -151,6 +192,7 @@ oponent Blue = Red
 
 
 -- | For a given game state and a move plays that move and returns resulting game state if move was possible.
+-- | O (m + n * log(m))
 applyMove 
     -- | A game state. Correctness is not checked for performance reasons.
     :: GameState 
