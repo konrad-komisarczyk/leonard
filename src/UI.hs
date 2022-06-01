@@ -32,7 +32,6 @@ import Data.Int
 import Data.Maybe
 import System.Random
 import Control.Concurrent (threadDelay)
-import Data.Functor (($>))
 
 
 -- | Type representing delay between moves in Computer VS Computer game
@@ -408,7 +407,7 @@ simpleTrans state = Transition state (pure Nothing)
 
 -- | Wait given time and return given MaybeEvent.
 waitAndEvoke :: Maybe Event -> PlaySpeed -> IO (Maybe Event)
-waitAndEvoke maybeEvent time = threadDelay time $> maybeEvent
+waitAndEvoke maybeEvent time = threadDelay time >> pure maybeEvent
 
 -- | For a given state and an event returns Transition to a next state.
 -- | Transition contains next state and does some IO action that may result in a next event that will be evoken.
