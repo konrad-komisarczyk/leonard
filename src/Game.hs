@@ -70,6 +70,10 @@ type Move = Int
 newGame :: BoardSetting -> GameState
 newGame bs@(BoardSetting m n _) = GameState bs (Seq.replicate (m * n) Nothing) Red
 
+-- -- | Strict foldl.
+-- foldl' :: (a -> b -> a) -> a -> [b] -> a
+-- foldl' _ z [] = z
+-- foldl' f z (x:xs) = let z' = f z x in z' `seq` foldl' f z' xs
 
 -- | Checks whether game representation is a valid state. Checks:  
 -- |     
@@ -152,6 +156,13 @@ checkPosIntoDirection
 checkPosIntoDirection _ 1 gs player position = checkPos gs player position
 checkPosIntoDirection direction k gs player position = 
     (checkPos gs player position) && (checkPosIntoDirection direction (k - 1) gs player (add position direction))
+
+-- -- | optimized any implementation. Strict and tail recursive.
+-- any' :: (a -> Bool) -> [a] -> Bool
+-- any' = any'' False where
+--     any'' acc f [] = acc
+--     any'' acc f (x:xs) = seq next $ any'' next f xs where
+--         next = (f x) || acc
 
 -- | Checks whether one of given positions starts a winning line into given direction for a given player
 checkPositions :: GameState -> Player -> Position -> [Position] -> Bool
