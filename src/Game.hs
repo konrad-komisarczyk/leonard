@@ -18,7 +18,8 @@ module Game
     doesPlayerWin,
     whoWins,
     availableMoves, 
-    applyMove
+    applyMove,
+    oponent
 ) 
 where
 

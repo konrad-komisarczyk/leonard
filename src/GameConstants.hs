@@ -34,7 +34,9 @@ difficultyName :: Difficulty -> Text
 difficultyName d = difficultyNames Data.Vector.! d
 
 difficultyToHiperparameters :: Difficulty -> AI.Hiperparameters
-difficultyToHiperparameters _ = 1
+difficultyToHiperparameters 0 = Random
+difficultyToHiperparameters _ = MCTS (sqrt 2) 1000 -- TODO
+
 
 defaultBoardSetting :: BoardSetting
 defaultBoardSetting = BoardSetting 6 7 4

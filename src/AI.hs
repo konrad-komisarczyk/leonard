@@ -12,9 +12,18 @@ module AI (
 
 import Game
 import System.Random
+import Data.Ord
+import Data.List
 
 -- | Type representing MCTS algorithm hiperparameters
-type Hiperparameters = Int
+data Hiperparameters 
+    = Random 
+    | MCTS {
+        -- | UCB 'c' balnace parameter
+        balance :: Float,
+        -- | number of MCTS iterations
+        nIterations :: Int
+    }
 
 -- | Random number generator state used by the AI algorithm.
 type Generator = StdGen
@@ -24,7 +33,7 @@ newGenerator :: Int -> Generator
 newGenerator = mkStdGen
 
 -- | Returns a completly random move when only there is one possible.
-getRandomMove :: RandomGen g => GameState -> g -> (Maybe Move, g)
+getRandomMove :: GameState -> Generator -> (Maybe Move, Generator)
 getRandomMove gameState generator =
     (Just (moves !! rand), nextGenerator)
     where
@@ -36,7 +45,7 @@ getRandomMove gameState generator =
 -- | Returns who wins the playout - Just Red / Just Blue / Nothing when its a draw
 -- | Tail recursive and strict.
 -- | TODO dyskontowanie odległych wypłat?
-simulation :: RandomGen g => GameState -> g -> (Maybe Player, g)
+simulation :: GameState -> Generator -> (Maybe Player, Generator)
 simulation gameState g = 
     case Game.whoWins gameState of
         Nothing -> -- No one won yet
@@ -54,22 +63,165 @@ simulation gameState g =
                                 seq (nextState, nextGen) $ simulation nextState nextGen -- we use seq to make it strict
         Just winner -> (Just winner, g) -- Someone already wins in that state, there is no need for further simulation, we did not generate any moves so generator is unchanged
 
+data MCTSNode 
+    = Node {
+        player :: Game.Player,
+        won :: Int,
+        lost :: Int,
+        draws :: Int,
+        children :: [(Game.Move, MCTSNode)]
+    }
 
+-- | Empty MCTS Tree Node
+emptyNode :: Player -> MCTSNode
+emptyNode player = Node player 0 0 0 []
+
+-- | For a given node and game result returns the node with updated wins/loses/draws counters.
+updatePointsBasingOnWinner :: MCTSNode -> Maybe Player -> MCTSNode
+updatePointsBasingOnWinner (Node player won lost draws children) Nothing = 
+    Node player won lost (draws + 1) children
+updatePointsBasingOnWinner (Node player won lost draws children) (Just winner) = 
+    let point = fromEnum (winner == player) in -- point = 1 or 0 depending on if player moving in this node has won or lost
+        Node player (won + point) (lost + 1 - point) draws children
+
+
+-- | For a given random generator returns its next state
+nextGeneratorState :: Generator -> Generator
+nextGeneratorState generator = snd (genWord8 generator)
+
+-- | For a given index and a list returns list where element with that index is moved to the head of the list.
+-- | For index exceeding length of list produces error.
+moveToStart :: Int -> [a] -> [a]
+moveToStart n as = 
+    head ts : (hs ++ tail ts)
+    where 
+        (hs, ts) = splitAt n as
+
+
+-- | For a given list selects one element randomly and puts it at the start.
+-- | Does nothing for an empty list.
+randomShuffle :: [Move] -> Generator -> ([Move], Generator)
+randomShuffle [] generator = ([], nextGeneratorState generator)
+randomShuffle moves generator = 
+    (moveToStart rand moves, generator)
+    where 
+        (rand, nextGenerator) = randomR (0, ((length moves) - 1)) generator
+        
+whichMax :: Ord b => (a -> b) -> [a] -> Int
+whichMax _ _ = 0 -- TODO
+
+maxBy :: Ord b => (a -> b) -> [a] -> a
+maxBy _ = head -- TODO
+
+selection :: MCTSNode -> Float -> MCTSNode
+selection node@(Node player won lost draws []) _ = node
+selection (Node player won lost draws children) c = 
+    Node player won lost draws (moveToStart selectedIndex children)
+    where
+        fathersSum = fromIntegral (won + lost + draws) :: Float
+        ucb bigN (Node _ 0 0 0 _) = 1 -- TODO
+        ucb bigN (Node _ wi li di _) = 
+            w / n + c * (sqrt ((log bigN) / n))
+            where 
+                w = fromIntegral wi :: Float
+                l = fromIntegral li :: Float
+                d = fromIntegral di :: Float
+                n = w + l + d
+        selectedIndex = whichMax (\(_, node) -> ucb fathersSum node) children
+
+
+-- | Do Selection, Expansion, Simulation, Backpropagation once
+iterateOnce :: GameState -> MCTSNode -> Generator -> Float -> (MCTSNode, Maybe Player, Generator)
+-- Leaf node
+iterateOnce gs node@(Node player won lost draws []) gen c =
+    case Game.whoWins gs of
+        Just winner -> 
+            -- game is already won in this node - we only increase won/lost, no Expansion/Simulation
+            (updatePointsBasingOnWinner node (Just winner), Just winner, nextGeneratorState gen)
+        Nothing -> 
+            case randomShuffle (Game.availableMoves gs) gen of
+                ([], gen2) -> 
+                    -- there are no possible moves from this node, so its a draw, we only increase draws, no Expansion/Simulation
+                    (Node player 0 0 (draws + 1) [], Nothing, gen2)
+                (luckyChildMove : otherChildrenMoves, gen2) -> 
+                    -- there is at least one possible move from that node - so we Expand
+                    -- lucky child is a child, that we will be simulating from - its chosen randomly, as first element of randomShuffle
+                    case Game.applyMove gs luckyChildMove of
+                        Nothing -> -- this should not happen, because the move should be valid - we got it from the Game.availableMoves function
+                            (Node player won lost draws [], Nothing, gen2)
+                        Just luckyChildState -> 
+                                let 
+                                    -- we do the Simulation:
+                                    (simulationWinner, gen3) = simulation luckyChildState gen2
+                                    -- we build children nodes:
+                                    luckyChildNode = updatePointsBasingOnWinner (emptyNode (Game.oponent player)) simulationWinner
+                                    luckyChildEdge = (luckyChildMove, luckyChildNode)
+                                    otherChildrenEdges = map (\move -> (move, emptyNode (Game.oponent player))) otherChildrenMoves
+                                    -- the lucky one is the first one on the list - positions on the list doesn't matter
+                                    allChildren = luckyChildEdge:otherChildrenEdges
+                                    -- we append children list to the node
+                                    notUpdatedNode = Node player won lost draws allChildren
+                                    -- we update node win informations basing on simulation results
+                                    backpropagatedNode = updatePointsBasingOnWinner notUpdatedNode simulationWinner
+                                    -- we do the Selection
+                                    updatedNode = selection backpropagatedNode c
+                                in
+                                        (updatedNode, simulationWinner, gen3)
+-- Internal node
+iterateOnce gs node@(Node player won lost draws ((selectedChildMove, selectedChildNode):otherChildrenEdges)) gen c = 
+    case Game.applyMove gs selectedChildMove of
+        Nothing -> -- shouldnt happen
+            (node, Nothing, gen)
+        Just selectedChildGameState ->
+            (resultingNode, simulationWinner, nextGen)
+            where 
+                -- we run iteration recursively for the Selected child
+                (updatedSelectedChildNode, simulationWinner, nextGen) = iterateOnce selectedChildGameState selectedChildNode gen c
+                -- we update the child in our node
+                nodeWithUpdatedChild = Node player won lost draws ((selectedChildMove, updatedSelectedChildNode):otherChildrenEdges)
+                -- we update won/lost/draws information in out node (= Backpropagation)
+                nodeWithUpdatedWeights = updatePointsBasingOnWinner nodeWithUpdatedChild simulationWinner
+                -- we do the Selection
+                resultingNode = selection nodeWithUpdatedWeights c
+                
+
+-- | Select best move based on the MCTS Tree
+bestMoveFromTree :: MCTSNode -> Maybe Move
+bestMoveFromTree (Node _ _ _ _ []) = Nothing
+bestMoveFromTree (Node _ _ _ _ children) = Just (fst (maxBy (\(cm, cn) -> numberOfSimulations cn) children)) 
+    where numberOfSimulations (Node _ w l d _) = w + l + d
+
+-- | Applies given function 'f' n times to a given starting value
+-- | Tail recursive and strict
+iterateF :: (a -> a) 
+    -- n
+    -> Int
+    -- starting value 'a'
+    -> a  
+    -- result = f(f(f(f(...(f(a))))))
+    -> a
+iterateF _ 0 acc = acc
+iterateF f i acc = seq next $ iterateF f (i - 1) next where
+    next = f acc
 
 -- | Returns next move of the AI player.
-getNextMove :: RandomGen g 
+getNextMove ::  
     -- | Game state to which AI player should respond
-    => GameState 
+     GameState 
     -- | MCTS algorithm hiperparameters
     -> Hiperparameters 
     -- | Random number generator state
-    -> g 
+    -> Generator 
     -- | If there is a move possible then Just Move, if there is no move possible Nothing
     -> (Maybe Move, 
     -- | State of the random number generator after calculating the move.
-    g)
-getNextMove gameState _ generator =
+    Generator)
+getNextMove gameState Random generator =
     getRandomMove gameState generator
+getNextMove gameState@(GameState _ _ player) (MCTS c niters) generator =
+    (bestMoveFromTree finalTree, finalGen)
+    where
+        (finalTree, _, finalGen) = iterateF (\(tree, _, gen) -> iterateOnce gameState tree gen c) niters (emptyNode player, Nothing, generator)
     
             
         
