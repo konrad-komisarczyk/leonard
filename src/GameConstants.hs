@@ -17,7 +17,7 @@ import Data.Int
 type Difficulty = Int
 
 defaultDifficulty :: Difficulty
-defaultDifficulty = 0
+defaultDifficulty = 1
 
 -- | Difficulty level names to display. Vectors i'th element is name of difficulty = i.
 difficultyNames :: Vector Text
@@ -39,7 +39,7 @@ difficultyName d = difficultyNames Data.Vector.! d
 
 difficultyToHiperparameters :: Difficulty -> AI.Hiperparameters
 difficultyToHiperparameters 0 = Random
-difficultyToHiperparameters _ = MCTS (sqrt 2) 8 -- TODO
+difficultyToHiperparameters _ = MCTS (sqrt 2) 10 -- TODO
 
 
 defaultBoardSetting :: BoardSetting

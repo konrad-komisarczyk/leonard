@@ -587,7 +587,7 @@ initialState' = defaultSettingsWindow
 
 
 
-
+--- TODO:
 --- Jak doprowadzić do błędu: otworzyć ComputerVSComputer, wrócić do menu i szybko zacząć nową grę - w grze pojawi się jeden ruch, który nie powinien się pojawić - był to oczekujący ruch z symulacji ComputerVSComputer, którego cooldown nie zdążył minąć zanim włączyliśmy drugą grę
 --- Pauzowanie zmienia losowość!
 

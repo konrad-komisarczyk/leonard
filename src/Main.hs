@@ -10,8 +10,8 @@ import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import Control.Monad
 import UI
-import           Data.ByteString                ( ByteString )
-import           Control.Concurrent.Async       ( async )
+import Data.ByteString (ByteString)
+import Control.Concurrent.Async (async)
 import Data.Text
 
 
@@ -32,7 +32,7 @@ main = do
 
   -- Set up screen and CSS provider
   screen <- maybe (fail "No screen?!") return =<< Gdk.screenGetDefault
-  p      <- Gtk.cssProviderNew
+  p <- Gtk.cssProviderNew
   Gtk.cssProviderLoadFromData p styles
   Gtk.styleContextAddProviderForScreen
     screen

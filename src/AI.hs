@@ -1,4 +1,3 @@
-
 {-|
 Module      : AI
 Description : Implementation of AI player based on the MCTS algorithm
@@ -41,10 +40,11 @@ getRandomMove gameState generator =
         (rand, nextGenerator) = randomR (0, ((length moves) - 1)) generator
 
 -- | Simulate one random playout. 
+-- | Light playout - moves chosen completely randomly.
+-- | Can be extended to heavy playout. - TODO ??
 -- | Takes game state - a starting state for the simulation and a random generator.
 -- | Returns who wins the playout - Just Red / Just Blue / Nothing when its a draw
 -- | Tail recursive and strict.
--- | TODO dyskontowanie odległych wypłat?
 simulation :: GameState -> Generator -> (Maybe Player, Generator)
 simulation gameState g = 
     case Game.whoWins gameState of
@@ -132,7 +132,15 @@ indexMaxBy f l =
             where (t, ti) = pmaxim xs (xi + 1)
     in snd (pmaxim l 0)
 
-selection :: MCTSNode -> Float -> MCTSNode
+
+-- | Do Selection in a given node.
+-- | Selection is based on the UCB formula.
+-- | Can be extended to include progressive bias, but then we need to add GameState argument to the signature. - TODO ??
+-- | Selected child is moved to the front of the children list
+selection :: MCTSNode 
+    -- | 'c' UCB balance parameter - originally 'c' = (sqrt 2)
+    -> Float 
+    -> MCTSNode
 selection node@(Node player won lost draws []) _ = node
 selection (Node player won lost draws children) c = 
     Node player won lost draws (moveToStart selectedIndex children)
