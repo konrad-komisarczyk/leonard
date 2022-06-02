@@ -90,7 +90,7 @@ nextGeneratorState :: Generator -> Generator
 nextGeneratorState generator = snd (genWord8 generator)
 
 -- | For a given index and a list returns list where element with that index is moved to the head of the list.
--- | For index exceeding length of list produces error.
+-- | For index exceeding length of list produces error (Exception: Prelude.head: empty list).
 moveToStart :: Int -> [a] -> [a]
 moveToStart n as = 
     head ts : (hs ++ tail ts)
@@ -106,12 +106,31 @@ randomShuffle moves generator =
     (moveToStart rand moves, generator)
     where 
         (rand, nextGenerator) = randomR (0, ((length moves) - 1)) generator
-        
-whichMax :: Ord b => (a -> b) -> [a] -> Int
-whichMax _ _ = 0 -- TODO
 
-maxBy :: Ord b => (a -> b) -> [a] -> a
-maxBy _ = head -- TODO
+
+-- | Find any (first) max element of a list, comparing by result of a function applied to elements.
+maxBy :: Ord b => (a -> b) -> [a] -> a 
+maxBy f l = 
+    let 
+        pmaxim [] _  = error "Empty list"
+        pmaxim [x] xi = (x, xi) 
+        pmaxim (x:xs) xi
+            | (f x) >= (f t) = (x, xi) 
+            | otherwise = (t, ti)
+            where (t, ti) = pmaxim xs (xi + 1)
+    in fst (pmaxim l 0)
+
+-- | Find index of any (first) max element of a list, comparing by result of a function applied to elements.
+indexMaxBy :: Ord b => (a -> b) -> [a] -> Int
+indexMaxBy f l =
+    let 
+        pmaxim [] _  = error "Empty list"
+        pmaxim [x] xi = (x, xi) 
+        pmaxim (x:xs) xi
+            | (f x) >= (f t) = (x, xi) 
+            | otherwise = (t, ti)
+            where (t, ti) = pmaxim xs (xi + 1)
+    in snd (pmaxim l 0)
 
 selection :: MCTSNode -> Float -> MCTSNode
 selection node@(Node player won lost draws []) _ = node
@@ -127,7 +146,7 @@ selection (Node player won lost draws children) c =
                 l = fromIntegral li :: Float
                 d = fromIntegral di :: Float
                 n = w + l + d
-        selectedIndex = whichMax (\(_, node) -> ucb fathersSum node) children
+        selectedIndex = indexMaxBy (\(_, node) -> ucb fathersSum node) children
 
 
 -- | Do Selection, Expansion, Simulation, Backpropagation once
@@ -142,7 +161,7 @@ iterateOnce gs node@(Node player won lost draws []) gen c =
             case randomShuffle (Game.availableMoves gs) gen of
                 ([], gen2) -> 
                     -- there are no possible moves from this node, so its a draw, we only increase draws, no Expansion/Simulation
-                    (Node player 0 0 (draws + 1) [], Nothing, gen2)
+                    (Node player 0 0 (draws + 1) [], Nothing, nextGeneratorState gen2)
                 (luckyChildMove : otherChildrenMoves, gen2) -> 
                     -- there is at least one possible move from that node - so we Expand
                     -- lucky child is a child, that we will be simulating from - its chosen randomly, as first element of randomShuffle
@@ -170,7 +189,7 @@ iterateOnce gs node@(Node player won lost draws []) gen c =
 -- Internal node
 iterateOnce gs node@(Node player won lost draws ((selectedChildMove, selectedChildNode):otherChildrenEdges)) gen c = 
     case Game.applyMove gs selectedChildMove of
-        Nothing -> -- shouldnt happen
+        Nothing -> -- shouldnt happen, there is a child that was created with that move, so that move should be corect
             (node, Nothing, gen)
         Just selectedChildGameState ->
             (resultingNode, simulationWinner, nextGen)
