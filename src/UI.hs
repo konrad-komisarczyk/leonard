@@ -316,7 +316,7 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           ] [
               widget Gtk.Label [#label := "Number of rows: ", classes ["settingsLabel"]],
               minusButton m k (\a -> MChanged a),
-              widget Gtk.Label [#label := (Data.Text.pack (show m))],
+              widget Gtk.Label [#label := (Data.Text.pack (show m)), #widthChars := 2, #xalign := 0.5],
               plusButton m GameConstants.maxRows (\a -> MChanged a)
           ],
           container Gtk.Box [ -- columns settings
@@ -325,7 +325,7 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           ] [
               widget Gtk.Label [#label := "Number of columns: ", classes ["settingsLabel"]],
               minusButton n k (\a -> NChanged a),
-              widget Gtk.Label [#label := (Data.Text.pack (show n))],
+              widget Gtk.Label [#label := (Data.Text.pack (show n)), #widthChars := 2, #xalign := 0.5],
               plusButton n GameConstants.maxColumns (\a -> NChanged a)
           ],
           container Gtk.Box [ -- winning line settings
@@ -334,7 +334,7 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           ] [
               widget Gtk.Label [#label := "Length of line to win: ", classes ["settingsLabel"]],
               minusButton k GameConstants.minLine (\a -> KChanged a),
-              widget Gtk.Label [#label := (Data.Text.pack (show k))],
+              widget Gtk.Label [#label := (Data.Text.pack (show k)), #widthChars := 2, #xalign := 0.5],
               plusButton k (min m n) (\a -> KChanged a)
           ]
       ],
@@ -354,10 +354,12 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           widget Gtk.Label [#label := "Red: ", classes ["settingsLabel", "red"]], 
           container Gtk.Box [#spacing := 8] (if isRedComputer then [
               widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)],
+              widget Gtk.Separator [],
               widget Gtk.Label [#label := "Difficulty:"],
               minusButton redD GameConstants.minDifficulty (\a -> RedDifficultyChanged a),
-              widget Gtk.Label [#label := (GameConstants.difficultyName redD)],
+              widget Gtk.Label [#label := (GameConstants.difficultyName redD), #widthChars := GameConstants.maxDifficultyNameLength, #xalign := 0.5],
               plusButton redD GameConstants.maxDifficulty (\a -> RedDifficultyChanged a),
+              widget Gtk.Separator [],
               widget Gtk.Label [#label := "Seed:"],
               widget Gtk.Label [#label := (Data.Text.pack (show redSeed))],
               widget Gtk.Button [#label := "🎲", on #clicked (RedSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen redSeed))))]
@@ -374,10 +376,12 @@ view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSe
           widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel", "blue"]], 
           container Gtk.Box [#spacing := 8] (if isBlueComputer then [
               widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)],
+              widget Gtk.Separator [],
               widget Gtk.Label [#label := "Difficulty:"],
               minusButton blueD GameConstants.minDifficulty (\a -> BlueDifficultyChanged a),
-              widget Gtk.Label [#label := (GameConstants.difficultyName blueD)],
+              widget Gtk.Label [#label := (GameConstants.difficultyName blueD), #widthChars := GameConstants.maxDifficultyNameLength, #xalign := 0.5],
               plusButton blueD GameConstants.maxDifficulty (\a -> BlueDifficultyChanged a),
+              widget Gtk.Separator [],
               widget Gtk.Label [#label := "Seed:"],
               widget Gtk.Label [#label := (Data.Text.pack (show blueSeed))],
               widget Gtk.Button [#label := "🎲", on #clicked (BlueSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen blueSeed))))]
