@@ -34,18 +34,21 @@ import System.Random
 import Control.Concurrent (threadDelay)
 
 
--- | Default delay between moves in Computer VS Computer game.
--- | Set to 1 second
+-- | Default additional delay between moves in Computer VS Computer game.
+-- | Set to 0.2 seconds
 defaultSpeed :: Int
-defaultSpeed = 5
+defaultSpeed = 2
+
 
 minSpeed :: Int
 minSpeed = 0
 
+
 maxSpeed :: Int
 maxSpeed = 100
 
--- | Type containing parameters for the MCTS AI player function. 
+
+-- | Type containing parameters and random generator for the MCTS AI player function. 
 data AISetting = 
     AISetting {
         -- | Hyperparameters for the MCTS AI player function. 
@@ -54,6 +57,7 @@ data AISetting =
         -- | Random number generator state. Changes after every AI move.
         generator :: AI.Generator
     }
+
 
 -- | Application states. 
 -- | Each state corresponds to one type of window application can render and values that have to be stored in that state.
@@ -97,6 +101,7 @@ data State
         message :: Text}
 
 
+-- | Possible events. Each event depending on current state changes state and then does some IO action and finally maybe invokes other events.
 data Event 
     = Closed 
     | Error Text
@@ -120,9 +125,11 @@ data Event
     | SimulationPaused 
     | SimulationResumed
 
+
 -- | Default values of SettingsWindow State
 defaultSettingsWindow :: State
 defaultSettingsWindow = SettingsWindow GameConstants.defaultBoardSetting False GameConstants.defaultDifficulty 137 False GameConstants.defaultDifficulty 213 defaultSpeed
+
 
 -- | Window containing whole application
 mainWrapper 
@@ -135,6 +142,7 @@ mainWrapper child = bin Gtk.Window
   #resizable := False
   ]
   $ child
+
 
 -- | Button with "+" label evoking Int parametrized event modyfing a variable. 
 -- | Inactive when value of a given variable would exceed given bound.
@@ -172,6 +180,7 @@ minusButton currVal minVal event =
         #sensitive := (currVal > minVal)
         ]
 
+
 -- | Map board field value to an appropiate image representing token or empty field
 boardElemToImage :: Maybe Player -> Widget Event
 boardElemToImage Nothing = widget Gtk.Image [#file := "img/empty.png"]
@@ -198,6 +207,7 @@ boardElemToGridChild m index elem = GridChild {
     child = (boardElemToImage elem)
 }
 
+
 -- | Map board state to Vector of Grid children containing images representing appropiate tokens or empty fields
 boardToGridChildren 
     -- | number of rows
@@ -205,10 +215,12 @@ boardToGridChildren
     -> BoardState -> Vector (GridChild Event)
 boardToGridChildren m board = fromList (toList (Seq.mapWithIndex (boardElemToGridChild m) board))
 
+
 -- | Map a single move to a button. Clicking that button will evoke 'MovePlayed' event.
 moveToButton :: Player -> Move -> Widget Event
 moveToButton Red move = bin Gtk.Button [on #clicked (MovePlayed move), #margin := 4] (widget Gtk.Image [#file := "img/redArrow.png"])
 moveToButton Blue move = bin Gtk.Button [on #clicked (MovePlayed move), #margin := 4] (widget Gtk.Image [#file := "img/blueArrow.png"])
+
 
 -- | Map a single move to Grid element containing move button
 moveToGridChild :: Player -> Move -> GridChild Event
@@ -221,9 +233,11 @@ moveToGridChild player move = GridChild {
     child = (moveToButton player move)
 }
 
+
 -- | Map moves to Grid elements containing move buttons
 movesToGridChildren :: Player -> [Move] -> Vector (GridChild Event)
 movesToGridChildren player moves = fromList (map (moveToGridChild player) moves)
+
 
 -- | Map game state to Grid widget
 gameGrid :: GameState 
@@ -238,6 +252,7 @@ gameGrid gameState@(GameState bs@(BoardSetting m n _) board player) showMoves = 
             | showMoves = (boardToGridChildren m board) Data.Vector.++ (movesToGridChildren player (Game.availableMoves gameState))
             | otherwise = boardToGridChildren m board
 
+
 -- | Content of win information box in game window.
 -- | For Nothing returns empty vector
 -- | For Just Player returns vector with single label saying, that given player wins
@@ -245,6 +260,7 @@ winInformation :: Maybe Player -> Vector (BoxChild Event)
 winInformation Nothing = []
 winInformation (Just Blue) = [widget Gtk.Label [#label := "Blue player wins!", #marginTop := 8, classes ["winInformation", "blue"]]]
 winInformation (Just Red) = [widget Gtk.Label [#label := "Red player wins!", #marginTop := 8, classes ["winInformation", "red"]]]
+
 
 -- | Content of pause button box in game window.
 -- | For Nothing returns empty vector
@@ -255,34 +271,43 @@ pauseButton Nothing = []
 pauseButton (Just True) = [widget Gtk.Button [#label := "Resume", on #clicked SimulationResumed]]
 pauseButton (Just False) = [widget Gtk.Button [#label := "Pause", on #clicked SimulationPaused]]
 
-gameWindow :: GameState -> Bool -> Maybe Player -> Maybe Bool -> AppView Gtk.Window Event
+
+-- | Returns a render of game window. 
+gameWindow :: GameState 
+    -- | Whether to show buttons with possible moves, that allow user to play that moves (should be true only if user has turn)
+    -> Bool 
+    -- | Information about current winner. When Just player info about winner is displayed.
+    -> Maybe Player 
+    -- | When 'Just paused' (in AI VS AI games) shows pause/resume button. When Nothing does not show that button.
+    -> Maybe Bool 
+    -> AppView Gtk.Window Event
 gameWindow gameState showMoves winningPlayer maybePaused = mainWrapper
   $ container Gtk.Box [
-      #orientation := Gtk.OrientationVertical, 
-      #halign := Gtk.AlignCenter] [
-      container Gtk.Box [
-          #orientation := Gtk.OrientationVertical, 
-          #halign := Gtk.AlignCenter
-          ] (winInformation winningPlayer),
-      container Gtk.Box [
-          #orientation := Gtk.OrientationVertical, 
-          #halign := Gtk.AlignCenter
-          ] (pauseButton maybePaused),
-      container Gtk.Box [
-          #orientation := Gtk.OrientationHorizontal
-          ] [
-          container Gtk.Box [ -- board container
-              #orientation := Gtk.OrientationVertical,
-              #margin := 12
-              ] [
-              (gameGrid gameState showMoves)
-          ]
-      ],
-      container Gtk.Box [
-          #orientation := Gtk.OrientationVertical,
-          #margin := 10] [
-          widget Gtk.Button [#label := "Back to Main Menu", on #clicked EndGame, #halign := Gtk.AlignCenter]
-      ]
+        #orientation := Gtk.OrientationVertical, 
+        #halign := Gtk.AlignCenter] [
+        container Gtk.Box [
+            #orientation := Gtk.OrientationVertical, 
+            #halign := Gtk.AlignCenter
+            ] (winInformation winningPlayer),
+        container Gtk.Box [
+            #orientation := Gtk.OrientationVertical, 
+            #halign := Gtk.AlignCenter
+            ] (pauseButton maybePaused),
+        container Gtk.Box [
+            #orientation := Gtk.OrientationHorizontal
+            ] [
+            container Gtk.Box [ -- board container
+                #orientation := Gtk.OrientationVertical,
+                #margin := 12
+                ] [
+                (gameGrid gameState showMoves)
+            ]
+        ],
+        container Gtk.Box [
+            #orientation := Gtk.OrientationVertical,
+            #margin := 10] [
+            widget Gtk.Button [#label := "Back to Main Menu", on #clicked EndGame, #halign := Gtk.AlignCenter]
+        ]
   ]
 
 -- | Returns a render of a given state
@@ -293,121 +318,121 @@ view' (ErrorWindow message) =
 -- Settings window
 view' (SettingsWindow boardSetting@(BoardSetting m n k) isRedComputer redD redSeed isBlueComputer blueD blueSeed speed) = 
     mainWrapper $ container Gtk.Box [
-      #orientation := Gtk.OrientationVertical,
-      #margin := 10
-      ] [
-      -- banner
-      widget Gtk.Image [
-          #halign := Gtk.AlignCenter, 
-          #file := "img/banner.png"
-      ],
-       -- first row (board settings)
-      widget Gtk.Label [
-          #label := "Board settings: ", 
-          #halign := Gtk.AlignCenter,
-          #marginBottom := 4, 
-          classes ["header"]],
-      container Gtk.Box [
-          #orientation := Gtk.OrientationVertical
-          ] [
-          container Gtk.Box [ -- rows settings
-              #marginTop := 8,
-              #spacing := 8
-          ] [
-              widget Gtk.Label [#label := "Number of rows: ", classes ["settingsLabel"]],
-              minusButton m k (\a -> MChanged a),
-              widget Gtk.Label [#label := (Data.Text.pack (show m)), #widthChars := 2, #xalign := 0.5],
-              plusButton m GameConstants.maxRows (\a -> MChanged a)
-          ],
-          container Gtk.Box [ -- columns settings
-              #marginTop := 8,
-              #spacing := 8
-          ] [
-              widget Gtk.Label [#label := "Number of columns: ", classes ["settingsLabel"]],
-              minusButton n k (\a -> NChanged a),
-              widget Gtk.Label [#label := (Data.Text.pack (show n)), #widthChars := 2, #xalign := 0.5],
-              plusButton n GameConstants.maxColumns (\a -> NChanged a)
-          ],
-          container Gtk.Box [ -- winning line settings
-              #marginTop := 8,
-              #spacing := 8
-          ] [
-              widget Gtk.Label [#label := "Length of line to win: ", classes ["settingsLabel"]],
-              minusButton k GameConstants.minLine (\a -> KChanged a),
-              widget Gtk.Label [#label := (Data.Text.pack (show k)), #widthChars := 2, #xalign := 0.5],
-              plusButton k (min m n) (\a -> KChanged a)
-          ]
-      ],
-      widget Gtk.Separator [
-          #margin := 16],
-       -- second row (player settings)
-      widget Gtk.Label [
-          #label := "Players settings: ", 
-          #halign := Gtk.AlignCenter,
-          #marginBottom := 4, 
-          classes ["header"]],
-      container Gtk.Box [ -- red player settings
-          #orientation := Gtk.OrientationHorizontal,
-          #marginTop := 8,
-          #spacing := 8
-          ] [
-          widget Gtk.Label [#label := "Red: ", classes ["settingsLabel", "red"]], 
-          container Gtk.Box [#spacing := 8] (if isRedComputer then [
-              widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)],
-              widget Gtk.Separator [],
-              widget Gtk.Label [#label := "Difficulty:"],
-              minusButton redD GameConstants.minDifficulty (\a -> RedDifficultyChanged a),
-              widget Gtk.Label [#label := (GameConstants.difficultyName redD), #widthChars := GameConstants.maxDifficultyNameLength, #xalign := 0.5],
-              plusButton redD GameConstants.maxDifficulty (\a -> RedDifficultyChanged a),
-              widget Gtk.Separator [],
-              widget Gtk.Label [#label := "Seed:"],
-              widget Gtk.Label [#label := (Data.Text.pack (show redSeed))],
-              widget Gtk.Button [#label := "🎲", on #clicked (RedSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen redSeed))))]
-          ]
-          else [
-              widget Gtk.Button [#label := "Player", on #clicked (RedTypeChanged True)]
-          ])
-      ],
-      container Gtk.Box [ -- blue player settings
-          #orientation := Gtk.OrientationHorizontal,
-          #marginTop := 8,
-          #spacing := 8
-          ] [
-          widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel", "blue"]], 
-          container Gtk.Box [#spacing := 8] (if isBlueComputer then [
-              widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)],
-              widget Gtk.Separator [],
-              widget Gtk.Label [#label := "Difficulty:"],
-              minusButton blueD GameConstants.minDifficulty (\a -> BlueDifficultyChanged a),
-              widget Gtk.Label [#label := (GameConstants.difficultyName blueD), #widthChars := GameConstants.maxDifficultyNameLength, #xalign := 0.5],
-              plusButton blueD GameConstants.maxDifficulty (\a -> BlueDifficultyChanged a),
-              widget Gtk.Separator [],
-              widget Gtk.Label [#label := "Seed:"],
-              widget Gtk.Label [#label := (Data.Text.pack (show blueSeed))],
-              widget Gtk.Button [#label := "🎲", on #clicked (BlueSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen blueSeed))))]
-          ]
-          else [
-              widget Gtk.Button [#label := "Player", on #clicked (BlueTypeChanged True)]
-          ])
-      ],
-      container Gtk.Box [ -- speed settings
-          #orientation := Gtk.OrientationHorizontal,
-          #marginTop := 8,
-          #spacing := 8
-      ] (if isBlueComputer && isRedComputer then [
-            widget Gtk.Label [#label := "Delay between moves: "],
+        #orientation := Gtk.OrientationVertical,
+        #margin := 10
+        ] [
+        -- banner
+        widget Gtk.Image [
+            #halign := Gtk.AlignCenter, 
+            #file := "img/banner.png"
+        ],
+        -- first row (board settings)
+        widget Gtk.Label [
+            #label := "Board settings: ", 
+            #halign := Gtk.AlignCenter,
+            #marginBottom := 4, 
+            classes ["header"]],
+        container Gtk.Box [
+            #orientation := Gtk.OrientationVertical
+            ] [
+            container Gtk.Box [ -- rows settings
+                #marginTop := 8,
+                #spacing := 8
+            ] [
+                widget Gtk.Label [#label := "Number of rows: ", classes ["settingsLabel"]],
+                minusButton m k (\a -> MChanged a),
+                widget Gtk.Label [#label := (Data.Text.pack (show m)), #widthChars := 2, #xalign := 0.5],
+                plusButton m GameConstants.maxRows (\a -> MChanged a)
+            ],
+            container Gtk.Box [ -- columns settings
+                #marginTop := 8,
+                #spacing := 8
+            ] [
+                widget Gtk.Label [#label := "Number of columns: ", classes ["settingsLabel"]],
+                minusButton n k (\a -> NChanged a),
+                widget Gtk.Label [#label := (Data.Text.pack (show n)), #widthChars := 2, #xalign := 0.5],
+                plusButton n GameConstants.maxColumns (\a -> NChanged a)
+            ],
+            container Gtk.Box [ -- winning line settings
+                #marginTop := 8,
+                #spacing := 8
+            ] [
+                widget Gtk.Label [#label := "Length of line to win: ", classes ["settingsLabel"]],
+                minusButton k GameConstants.minLine (\a -> KChanged a),
+                widget Gtk.Label [#label := (Data.Text.pack (show k)), #widthChars := 2, #xalign := 0.5],
+                plusButton k (min m n) (\a -> KChanged a)
+            ]
+        ],
+        widget Gtk.Separator [
+            #margin := 16],
+        -- second row (player settings)
+        widget Gtk.Label [
+            #label := "Players settings: ", 
+            #halign := Gtk.AlignCenter,
+            #marginBottom := 4, 
+            classes ["header"]],
+        container Gtk.Box [ -- red player settings
+            #orientation := Gtk.OrientationHorizontal,
+            #marginTop := 8,
+            #spacing := 8
+            ] [
+            widget Gtk.Label [#label := "Red: ", classes ["settingsLabel", "red"]], 
+            container Gtk.Box [#spacing := 8] (if isRedComputer then [
+                widget Gtk.Button [#label := "Computer", on #clicked (RedTypeChanged False)],
+                widget Gtk.Separator [],
+                widget Gtk.Label [#label := "Difficulty:"],
+                minusButton redD GameConstants.minDifficulty (\a -> RedDifficultyChanged a),
+                widget Gtk.Label [#label := (GameConstants.difficultyName redD), #widthChars := GameConstants.maxDifficultyNameLength, #xalign := 0.5],
+                plusButton redD GameConstants.maxDifficulty (\a -> RedDifficultyChanged a),
+                widget Gtk.Separator [],
+                widget Gtk.Label [#label := "Seed:"],
+                widget Gtk.Label [#label := (Data.Text.pack (show redSeed))],
+                widget Gtk.Button [#label := "🎲", on #clicked (RedSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen redSeed))))]
+            ]
+            else [
+                widget Gtk.Button [#label := "Player", on #clicked (RedTypeChanged True)]
+            ])
+        ],
+        container Gtk.Box [ -- blue player settings
+            #orientation := Gtk.OrientationHorizontal,
+            #marginTop := 8,
+            #spacing := 8
+            ] [
+            widget Gtk.Label [#label := "Blue: ", classes ["settingsLabel", "blue"]], 
+            container Gtk.Box [#spacing := 8] (if isBlueComputer then [
+                widget Gtk.Button [#label := "Computer", on #clicked (BlueTypeChanged False)],
+                widget Gtk.Separator [],
+                widget Gtk.Label [#label := "Difficulty:"],
+                minusButton blueD GameConstants.minDifficulty (\a -> BlueDifficultyChanged a),
+                widget Gtk.Label [#label := (GameConstants.difficultyName blueD), #widthChars := GameConstants.maxDifficultyNameLength, #xalign := 0.5],
+                plusButton blueD GameConstants.maxDifficulty (\a -> BlueDifficultyChanged a),
+                widget Gtk.Separator [],
+                widget Gtk.Label [#label := "Seed:"],
+                widget Gtk.Label [#label := (Data.Text.pack (show blueSeed)), #widthChars := 4],
+                widget Gtk.Button [#label := "🎲", on #clicked (BlueSeedChanged (fst (System.Random.uniformR (10, 9999) (System.Random.mkStdGen blueSeed))))]
+            ]
+            else [
+                widget Gtk.Button [#label := "Player", on #clicked (BlueTypeChanged True)]
+            ])
+        ],
+        container Gtk.Box [ -- speed settings
+            #orientation := Gtk.OrientationHorizontal,
+            #marginTop := 8,
+            #spacing := 8
+        ] (if isBlueComputer && isRedComputer then [
+            widget Gtk.Label [#label := "Additional delay between moves (not from computing AI's move): "],
             minusButton speed minSpeed (\a -> SpeedChanged a),
             widget Gtk.Label [#label := ((Data.Text.pack (show ((fromIntegral speed) / 10))) `Data.Text.append` "s")],
             plusButton speed maxSpeed (\a -> SpeedChanged a)
-          ] else []),
-      widget Gtk.Separator [
-          #margin := 16],
-       -- third row (containing start game button)
-      container Gtk.Box [
-          #orientation := Gtk.OrientationVertical
-          ] [
-          widget Gtk.Button [#label := "Start game", on #clicked StartGame, #halign := Gtk.AlignCenter]
-      ]
+            ] else []),
+        widget Gtk.Separator [
+            #margin := 16],
+        -- third row (containing start game button)
+        container Gtk.Box [
+            #orientation := Gtk.OrientationVertical
+            ] [
+            widget Gtk.Button [#label := "Start game", on #clicked StartGame, #halign := Gtk.AlignCenter]
+        ]
   ]
 view' (UserVSUserWindow gameState) = 
     gameWindow gameState (isNothing winningPlayer) winningPlayer Nothing
@@ -430,9 +455,11 @@ view' (ComputerVSComputerWindow gameState redSetting blueSetting speed paused) =
 simpleTrans :: State -> Transition State Event
 simpleTrans state = Transition state (pure Nothing)
 
+
 -- | Wait given time and return given MaybeEvent.
 waitAndEvoke :: Maybe Event -> Int -> IO (Maybe Event)
 waitAndEvoke maybeEvent time = threadDelay (time * 100 * 1000) >> pure maybeEvent
+
 
 -- | For a given state and an event returns Transition to a next state.
 -- | Transition contains next state and does some IO action that may result in a next event that will be evoken.
@@ -580,14 +607,8 @@ update' _ (Error text) =
 update' _ _ =
     simpleTrans (ErrorWindow "This shouldn't happen.")
 
+
 -- | Initial state of the application. 
 -- | Application starts with the SettingsWindow.
 initialState' :: State
 initialState' = defaultSettingsWindow
-
-
-
---- TODO:
---- Jak doprowadzić do błędu: otworzyć ComputerVSComputer, wrócić do menu i szybko zacząć nową grę - w grze pojawi się jeden ruch, który nie powinien się pojawić - był to oczekujący ruch z symulacji ComputerVSComputer, którego cooldown nie zdążył minąć zanim włączyliśmy drugą grę
---- Pauzowanie zmienia losowość!
-
