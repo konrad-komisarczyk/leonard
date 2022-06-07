@@ -28,7 +28,7 @@ executable leonard
       Paths_leonard
   hs-source-dirs:
       src
-  ghc-options: -threaded -O0 -g2 -Wall -rtsopts
+  ghc-options: -threaded
   build-depends:
       async
     , base >=4.7 && <5

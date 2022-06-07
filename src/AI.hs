@@ -13,7 +13,6 @@ import Game
 import System.Random
 import Data.Ord
 import Data.List
-import Debug.Trace
 
 -- | Type representing MCTS algorithm hiperparameters
 data Hiperparameters 
@@ -35,10 +34,13 @@ newGenerator = mkStdGen
 -- | Returns a completly random move when only there is one possible.
 getRandomMove :: GameState -> Generator -> (Maybe Move, Generator)
 getRandomMove gameState generator =
-    trace "i" $ (Just (moves !! rand), nextGenerator)
-    where
-        moves = Game.availableMoves gameState
-        (rand, nextGenerator) = randomR (0, ((length moves) - 1)) generator
+    case Game.availableMoves gameState of
+        [] -> (Nothing, generator)
+        moves -> 
+            let (rand, nextGenerator) = randomR (0, ((length moves) - 1)) generator in
+                (Just (moves !! rand), nextGenerator)
+    
+    
 
 -- | Simulate one random playout. 
 -- | Light playout - moves chosen completely randomly.
@@ -102,9 +104,9 @@ moveToStart n as =
 -- | For a given list selects one element randomly and puts it at the start.
 -- | Does nothing for an empty list.
 randomShuffle :: [Move] -> Generator -> ([Move], Generator)
-randomShuffle [] generator = trace "i" $ ([], nextGeneratorState generator)
+randomShuffle [] generator = ([], nextGeneratorState generator)
 randomShuffle moves generator = 
-    trace "i" $ (moveToStart rand moves, generator)
+    (moveToStart rand moves, generator)
     where 
         (rand, nextGenerator) = randomR (0, ((length moves) - 1)) generator
 
@@ -119,7 +121,7 @@ maxBy f l =
             | (f x) >= (f t) = (x, xi) 
             | otherwise = (t, ti)
             where (t, ti) = pmaxim xs (xi + 1)
-    in trace "i" $ fst (pmaxim l 0)
+    in fst (pmaxim l 0)
 
 -- | Find index of any (first) max element of a list, comparing by result of a function applied to elements.
 indexMaxBy :: Ord b => (a -> b) -> [a] -> Int
@@ -131,7 +133,7 @@ indexMaxBy f l =
             | (f x) >= (f t) = (x, xi) 
             | otherwise = (t, ti)
             where (t, ti) = pmaxim xs (xi + 1)
-    in trace "j" $ snd (pmaxim l 0)
+    in snd (pmaxim l 0)
 
 
 -- | Do Selection in a given node.
@@ -182,7 +184,7 @@ iterateOnce gs node@(Node player won lost draws []) gen c =
                                     -- we do the Simulation:
                                     (simulationWinner, gen3) = simulation luckyChildState gen2
                                     -- we build children nodes:
-                                    luckyChildNode = trace "i" $ updatePointsBasingOnWinner (emptyNode (Game.oponent player)) simulationWinner
+                                    luckyChildNode = updatePointsBasingOnWinner (emptyNode (Game.oponent player)) simulationWinner
                                     luckyChildEdge = (luckyChildMove, luckyChildNode)
                                     otherChildrenEdges = map (\move -> (move, emptyNode (Game.oponent player))) otherChildrenMoves
                                     -- the lucky one is the first one on the list - positions on the list doesn't matter
@@ -192,12 +194,12 @@ iterateOnce gs node@(Node player won lost draws []) gen c =
                                     -- we update node win informations basing on simulation results
                                     backpropagatedNode = updatePointsBasingOnWinner notUpdatedNode simulationWinner
                                     -- we do the Selection
-                                    updatedNode = trace "i" $ selection backpropagatedNode c
+                                    updatedNode = selection backpropagatedNode c
                                 in
                                         (updatedNode, simulationWinner, gen3)
 -- Internal node
 iterateOnce gs node@(Node player won lost draws ((selectedChildMove, selectedChildNode):otherChildrenEdges)) gen c = 
-    trace "i" $ case Game.applyMove gs selectedChildMove of
+    case Game.applyMove gs selectedChildMove of
         Nothing -> -- shouldnt happen, there is a child that was created with that move, so that move should be corect
             (node, Nothing, gen)
         Just selectedChildGameState ->

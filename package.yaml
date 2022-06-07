@@ -27,11 +27,6 @@ dependencies:
 
 ghc-options:
   - -threaded
-  - -O0
-  - -g2
-  - -Wall
-  - -rtsopts
-#  "$everything": -Wall -threaded
 
 executables:
   leonard:
