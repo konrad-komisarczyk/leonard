@@ -49,9 +49,9 @@ minDifficulty = 0
 
 difficultyToHiperparameters :: Difficulty -> AI.Hiperparameters
 difficultyToHiperparameters 0 = Random
-difficultyToHiperparameters 1 = MCTS (sqrt 2) 8000
-difficultyToHiperparameters 2 = MCTS (sqrt 2) 24000
-difficultyToHiperparameters 3 = MCTS (sqrt 2) 72000
+difficultyToHiperparameters 1 = MCTS (sqrt 2) 4000
+difficultyToHiperparameters 2 = MCTS (sqrt 2) 8000
+difficultyToHiperparameters 3 = MCTS (sqrt 2) 24000
 
 
 -- BOARD SETTING CONSTANTS --

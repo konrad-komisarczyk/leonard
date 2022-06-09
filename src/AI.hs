@@ -244,7 +244,7 @@ iterateOnce gs node@(Node player won lost draws ((selectedChildMove, selectedChi
 -- | Select best move based on the MCTS Tree
 bestMoveFromTree :: MCTSNode -> Maybe Move
 bestMoveFromTree (Node _ _ _ _ []) = Nothing
-bestMoveFromTree (Node _ _ _ _ children) = Just (fst (maxBy (\(cm, cn) -> numberOfSimulations cn) children)) 
+bestMoveFromTree (Node _ _ _ _ children) = Just (fst (maxBy (\(cm, cn) -> (-1) * (numberOfSimulations cn)) children)) 
     where numberOfSimulations (Node _ w l d _) = w + l + d
 
 
