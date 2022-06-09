@@ -1,0 +1,702 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Game
+Description : Connect Four game representation
+
+Declarative representation of generalized Connect Four game for two players.
+Can represent any game as series of applications of appropiate functions.
+Game can be parametrized with number of rows, columns, and line length needed to win. 
+Exported functions allow to create game, play it (check available moves and play moves) and check who wins. 
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Game</span><span>
+</span><span id="line-11"></span><span class="hs-special">(</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier">BoardSetting</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier">Player</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Game.html#BoardState"><span class="hs-identifier">BoardState</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier">GameState</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Game.html#Move"><span class="hs-identifier">Move</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Game.html#newGame"><span class="hs-identifier">newGame</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Game.html#doesPlayerWin"><span class="hs-identifier">doesPlayerWin</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><a href="Game.html#whoWins"><span class="hs-identifier">whoWins</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Game.html#availableMoves"><span class="hs-identifier">availableMoves</span></a></span><span class="hs-special">,</span><span> </span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Game.html#applyMove"><span class="hs-identifier">applyMove</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span class="annot"><a href="Game.html#oponent"><span class="hs-identifier">oponent</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-24"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Sequence</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Seq</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- | Parameters of the game.</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">data</span><span> </span><span id="BoardSetting"><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-var">BoardSetting</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="BoardSetting"><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-var">BoardSetting</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-comment">-- | Number of rows</span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-comment">--   In classic Connect Four equal to 6</span><span>
+</span><span id="line-34"></span><span>    </span><span id="nRows"><span class="annot"><span class="annottext">BoardSetting -&gt; Int
+</span><a href="Game.html#nRows"><span class="hs-identifier hs-var hs-var">nRows</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-comment">-- | Number of columns.</span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-comment">--   In classic Connect Four equal to 7</span><span>
+</span><span id="line-37"></span><span>    </span><span id="nColumns"><span class="annot"><span class="annottext">BoardSetting -&gt; Int
+</span><a href="Game.html#nColumns"><span class="hs-identifier hs-var hs-var">nColumns</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-comment">-- | Number of tokens placed consecutively either in horizontal, vertical, diagonal or antidiagonal line needed to win</span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-comment">--   In classic Connect Four equal to 4</span><span>
+</span><span id="line-40"></span><span>    </span><span id="lineToWin"><span class="annot"><span class="annottext">BoardSetting -&gt; Int
+</span><a href="Game.html#lineToWin"><span class="hs-identifier hs-var hs-var">lineToWin</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-41"></span><span class="hs-special">}</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- | Type representing player</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--   Either Red or Blue</span><span>
+</span><span id="line-46"></span><span class="hs-keyword">data</span><span> </span><span id="Player"><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-var">Player</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Red"><span class="annot"><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Blue"><span class="annot"><a href="Game.html#Blue"><span class="hs-identifier hs-var">Blue</span></a></span></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679210924"><span id="local-6989586621679210926"><span class="annot"><span class="annottext">Player -&gt; Player -&gt; Bool
+(Player -&gt; Player -&gt; Bool)
+-&gt; (Player -&gt; Player -&gt; Bool) -&gt; Eq Player
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Player -&gt; Player -&gt; Bool
+$c/= :: Player -&gt; Player -&gt; Bool
+== :: Player -&gt; Player -&gt; Bool
+$c== :: Player -&gt; Player -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | State of the board of the game.</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--   Sequence of elements - each of them represents an empty field ('Nothing') or a field occupied by a player's token 'Just Player'.</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--   It is possible for it to store invalid states.</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--   For game representation to be correct, (length 'BoardState') has to be equal m * n, where m = number of rows, n = number of columns.</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--   Position (i, j) on the board is stored in the (m * i + j)th element of Sequence.</span><span>
+</span><span id="line-54"></span><span class="hs-keyword">type</span><span> </span><span id="BoardState"><span class="annot"><a href="Game.html#BoardState"><span class="hs-identifier hs-var">BoardState</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Seq.Seq</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- | State of the game.</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--   It is possible for it to store invalid states.</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">data</span><span> </span><span id="GameState"><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-var">GameState</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="GameState"><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-var">GameState</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-60"></span><span>    </span><span class="hs-comment">-- | Parameters of the game</span><span>
+</span><span id="line-61"></span><span>    </span><span id="boardSetting"><span class="annot"><span class="annottext">GameState -&gt; BoardSetting
+</span><a href="Game.html#boardSetting"><span class="hs-identifier hs-var hs-var">boardSetting</span></a></span></span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-comment">-- | State of the board</span><span>
+</span><span id="line-63"></span><span>    </span><span id="boardState"><span class="annot"><span class="annottext">GameState -&gt; BoardState
+</span><a href="Game.html#boardState"><span class="hs-identifier hs-var hs-var">boardState</span></a></span></span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardState"><span class="hs-identifier hs-type">BoardState</span></a></span><span class="hs-special">,</span><span> </span><span>
+</span><span id="line-64"></span><span>    </span><span class="hs-comment">-- | Which player turn it is (who will do next move)</span><span>
+</span><span id="line-65"></span><span>    </span><span id="player"><span class="annot"><span class="annottext">GameState -&gt; Player
+</span><a href="Game.html#player"><span class="hs-identifier hs-var hs-var">player</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span>
+</span><span id="line-66"></span><span class="hs-special">}</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- | Move in the game. </span><span>
+</span><span id="line-70"></span><span class="hs-comment">--   Value i means throwing token into i'th column. </span><span>
+</span><span id="line-71"></span><span class="hs-comment">--   Columns are numbered from 0.</span><span>
+</span><span id="line-72"></span><span class="hs-keyword">type</span><span> </span><span id="Move"><span class="annot"><a href="Game.html#Move"><span class="hs-identifier hs-var">Move</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- | Creates new game with empty board for provided parameters.</span><span>
+</span><span id="line-76"></span><span class="hs-comment">--   Red player always has first move.</span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Game.html#newGame"><span class="hs-identifier hs-type">newGame</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span>
+</span><span id="line-78"></span><span id="newGame"><span class="annot"><span class="annottext">newGame :: BoardSetting -&gt; GameState
+</span><a href="Game.html#newGame"><span class="hs-identifier hs-var hs-var">newGame</span></a></span></span><span> </span><span id="local-6989586621679210918"><span class="annot"><span class="annottext">bs :: BoardSetting
+</span><a href="#local-6989586621679210918"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210917"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210917"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210916"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210916"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BoardSetting -&gt; BoardState -&gt; Player -&gt; GameState
+</span><a href="Game.html#GameState"><span class="hs-identifier hs-var">GameState</span></a></span><span> </span><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210918"><span class="hs-identifier hs-var">bs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Maybe Player -&gt; BoardState
+forall a. Int -&gt; a -&gt; Seq a
+</span><span class="hs-identifier hs-var">Seq.replicate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210917"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210916"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Player
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- | Checks whether game representation is a valid state. Checks:  </span><span>
+</span><span id="line-82"></span><span class="hs-comment">--       </span><span>
+</span><span id="line-83"></span><span class="hs-comment">--   * whether size of the board matches game parameters      </span><span>
+</span><span id="line-84"></span><span class="hs-comment">--  </span><span>
+</span><span id="line-85"></span><span class="hs-comment">--   * whether tokens in all columns are gravitated towards the bottom     </span><span>
+</span><span id="line-86"></span><span class="hs-comment">--    </span><span>
+</span><span id="line-87"></span><span class="hs-comment">--   Doesn't check if game was already won by one of the players in the past. Particularly, there can be more than one winner.</span><span>
+</span><span id="line-88"></span><span class="hs-comment">--   O(m * n)</span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Game.html#isCorrect"><span class="hs-identifier hs-type">isCorrect</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-90"></span><span id="isCorrect"><span class="annot"><span class="annottext">isCorrect :: GameState -&gt; Bool
+</span><a href="Game.html#isCorrect"><span class="hs-identifier hs-var hs-var">isCorrect</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210912"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210912"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210911"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210911"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210910"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210910"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210909"><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210909"><span class="hs-identifier hs-var">board</span></a></span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-91"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int -&gt; BoardState -&gt; Bool
+forall {a}. Int -&gt; Int -&gt; Int -&gt; Seq a -&gt; Bool
+</span><a href="#local-6989586621679210908"><span class="hs-identifier hs-var">isSizeCorrect</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210912"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210911"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210910"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210909"><span class="hs-identifier hs-var">board</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardState -&gt; Bool
+</span><a href="#local-6989586621679210906"><span class="hs-identifier hs-var">haveTokensFallen</span></a></span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210909"><span class="hs-identifier hs-var">board</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-92"></span><span>        </span><span id="local-6989586621679210908"><span class="annot"><span class="annottext">isSizeCorrect :: Int -&gt; Int -&gt; Int -&gt; Seq a -&gt; Bool
+</span><a href="#local-6989586621679210908"><span class="hs-identifier hs-var hs-var">isSizeCorrect</span></a></span></span><span> </span><span id="local-6989586621679210898"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210898"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210897"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210897"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210896"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210896"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679210895"><span class="annot"><span class="annottext">Seq a
+</span><a href="#local-6989586621679210895"><span class="hs-identifier hs-var">board</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Seq a -&gt; Int
+forall a. Seq a -&gt; Int
+</span><span class="hs-identifier hs-var">Seq.length</span></span><span> </span><span class="annot"><span class="annottext">Seq a
+</span><a href="#local-6989586621679210895"><span class="hs-identifier hs-var">board</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210898"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210897"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210898"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210896"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210897"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210896"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210896"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>        </span><span id="local-6989586621679210906"><span class="annot"><span class="annottext">haveTokensFallen :: BoardState -&gt; Bool
+</span><a href="#local-6989586621679210906"><span class="hs-identifier hs-var hs-var">haveTokensFallen</span></a></span></span><span> </span><span id="local-6989586621679210889"><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210889"><span class="hs-identifier hs-var">board</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(BoardState -&gt; Bool) -&gt; Seq BoardState -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">all</span></span><span> </span><span class="annot"><span class="annottext">BoardState -&gt; Bool
+forall {t :: * -&gt; *}. Foldable t =&gt; t (Maybe Player) -&gt; Bool
+</span><a href="#local-6989586621679210887"><span class="hs-identifier hs-var">haveTokensFallenColumn</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; BoardState -&gt; Seq BoardState
+forall a. Int -&gt; Seq a -&gt; Seq (Seq a)
+</span><span class="hs-identifier hs-var">Seq.chunksOf</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210912"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210889"><span class="hs-identifier hs-var">board</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-94"></span><span>            </span><span id="local-6989586621679210887"><span class="annot"><span class="annottext">haveTokensFallenColumn :: t (Maybe Player) -&gt; Bool
+</span><a href="#local-6989586621679210887"><span class="hs-identifier hs-var hs-var">haveTokensFallenColumn</span></a></span></span><span> </span><span id="local-6989586621679210883"><span class="annot"><span class="annottext">t (Maybe Player)
+</span><a href="#local-6989586621679210883"><span class="hs-identifier hs-var">column</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Bool, Maybe Player) -&gt; Bool
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Bool, Maybe Player) -&gt; Maybe Player -&gt; (Bool, Maybe Player))
+-&gt; (Bool, Maybe Player) -&gt; t (Maybe Player) -&gt; (Bool, Maybe Player)
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="annot"><span class="annottext">(Bool, Maybe Player) -&gt; Maybe Player -&gt; (Bool, Maybe Player)
+forall {a} {a}. (Bool, Maybe a) -&gt; Maybe a -&gt; (Bool, Maybe a)
+</span><a href="#local-6989586621679210881"><span class="hs-identifier hs-var">checkLighter</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Player -&gt; Maybe Player
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">t (Maybe Player)
+</span><a href="#local-6989586621679210883"><span class="hs-identifier hs-var">column</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-95"></span><span>                </span><span id="local-6989586621679210881"><span class="annot"><span class="annottext">checkLighter :: (Bool, Maybe a) -&gt; Maybe a -&gt; (Bool, Maybe a)
+</span><a href="#local-6989586621679210881"><span class="hs-identifier hs-var hs-var">checkLighter</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>                </span><span class="annot"><a href="#local-6989586621679210881"><span class="hs-identifier hs-var">checkLighter</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210880"><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679210880"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679210880"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-97"></span><span>                </span><span class="annot"><a href="#local-6989586621679210881"><span class="hs-identifier hs-var">checkLighter</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>                </span><span class="annot"><a href="#local-6989586621679210881"><span class="hs-identifier hs-var">checkLighter</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-comment">-- | Type representing position on the board. Used only for win checking.</span><span>
+</span><span id="line-102"></span><span class="hs-comment">--   1st postion is number of row, 2nd position is number of column</span><span>
+</span><span id="line-103"></span><span class="hs-keyword">type</span><span> </span><span id="Position"><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-var">Position</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- | Adds two positions. Used for moving from position into given direction.</span><span>
+</span><span id="line-107"></span><span class="hs-comment">--   Direction is one of positions (0, 1), (1, 0), (1, 1), (-1, 1)</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Game.html#add"><span class="hs-identifier hs-type">add</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span>
+</span><span id="line-109"></span><span id="add"><span class="annot"><span class="annottext">add :: Position -&gt; Position -&gt; Position
+</span><a href="Game.html#add"><span class="hs-identifier hs-var hs-var">add</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679210878"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210878"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210877"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210877"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679210876"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210876"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210875"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210875"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210878"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210876"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210877"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210875"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- | Returns 'Just element' - element of board at given position, or Nothing if the position is out of the board</span><span>
+</span><span id="line-113"></span><span class="hs-comment">--   O(log (m * n))</span><span>
+</span><span id="line-114"></span><span class="annot"><a href="Game.html#selectByPosition"><span class="hs-identifier hs-type">selectByPosition</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span id="selectByPosition"><span class="annot"><span class="annottext">selectByPosition :: GameState -&gt; Position -&gt; Maybe (Maybe Player)
+</span><a href="Game.html#selectByPosition"><span class="hs-identifier hs-var hs-var">selectByPosition</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210872"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210872"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210871"><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210871"><span class="hs-identifier hs-var">board</span></a></span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679210870"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210870"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210869"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210869"><span class="hs-identifier hs-var">j</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-116"></span><span>    </span><span class="annot"><span class="annottext">Int -&gt; BoardState -&gt; Maybe (Maybe Player)
+forall a. Int -&gt; Seq a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Seq.lookup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210872"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210869"><span class="hs-identifier hs-var">j</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210870"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210871"><span class="hs-identifier hs-var">board</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- | Checks whether a given positions on the board contains token of given player</span><span>
+</span><span id="line-120"></span><span class="hs-comment">--   O(log (m * n))</span><span>
+</span><span id="line-121"></span><span class="annot"><a href="Game.html#checkPos"><span class="hs-identifier hs-type">checkPos</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-122"></span><span id="checkPos"><span class="annot"><span class="annottext">checkPos :: GameState -&gt; Player -&gt; Position -&gt; Bool
+</span><a href="Game.html#checkPos"><span class="hs-identifier hs-var hs-var">checkPos</span></a></span></span><span> </span><span id="local-6989586621679210866"><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210866"><span class="hs-identifier hs-var">gameState</span></a></span></span><span> </span><span id="local-6989586621679210865"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210865"><span class="hs-identifier hs-var">player</span></a></span></span><span> </span><span id="local-6989586621679210864"><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210864"><span class="hs-identifier hs-var">position</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-123"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">GameState -&gt; Position -&gt; Maybe (Maybe Player)
+</span><a href="Game.html#selectByPosition"><span class="hs-identifier hs-var">selectByPosition</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210866"><span class="hs-identifier hs-var">gameState</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210864"><span class="hs-identifier hs-var">position</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-124"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679210863"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210863"><span class="hs-identifier hs-var">token</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210863"><span class="hs-identifier hs-var">token</span></a></span><span> </span><span class="annot"><span class="annottext">Player -&gt; Player -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210865"><span class="hs-identifier hs-var">player</span></a></span><span>
+</span><span id="line-125"></span><span>        </span><span id="local-6989586621679210862"><span class="annot"><span class="annottext">Maybe (Maybe Player)
+</span><a href="#local-6989586621679210862"><span class="hs-identifier hs-var">otherwise</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span class="hs-comment">-- | Board positions that can be a starting position for a winning line into vertical direction</span><span>
+</span><span id="line-129"></span><span class="hs-comment">--   (m - k) * n positions</span><span>
+</span><span id="line-130"></span><span class="annot"><a href="Game.html#verticalStarts"><span class="hs-identifier hs-type">verticalStarts</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-131"></span><span id="verticalStarts"><span class="annot"><span class="annottext">verticalStarts :: BoardSetting -&gt; [Position]
+</span><a href="Game.html#verticalStarts"><span class="hs-identifier hs-var hs-var">verticalStarts</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210860"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210860"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210859"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210859"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210858"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210858"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210857"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210856"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679210857"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210857"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210860"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210858"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210856"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210856"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210859"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="annot"><a href="Game.html#verticalDirection"><span class="hs-identifier hs-type">verticalDirection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span>
+</span><span id="line-134"></span><span id="verticalDirection"><span class="annot"><span class="annottext">verticalDirection :: Position
+</span><a href="Game.html#verticalDirection"><span class="hs-identifier hs-var hs-var">verticalDirection</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span class="hs-comment">-- | Board positions that can be a starting position for a winning line into horizontal direction</span><span>
+</span><span id="line-138"></span><span class="hs-comment">--   m * (n - k) positions</span><span>
+</span><span id="line-139"></span><span class="annot"><a href="Game.html#horizontalStarts"><span class="hs-identifier hs-type">horizontalStarts</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-140"></span><span id="horizontalStarts"><span class="annot"><span class="annottext">horizontalStarts :: BoardSetting -&gt; [Position]
+</span><a href="Game.html#horizontalStarts"><span class="hs-identifier hs-var hs-var">horizontalStarts</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210853"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210853"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210852"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210852"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210851"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210851"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210850"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210849"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679210850"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210850"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210853"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210849"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210849"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210852"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210851"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="annot"><a href="Game.html#horizontalDirection"><span class="hs-identifier hs-type">horizontalDirection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span>
+</span><span id="line-143"></span><span id="horizontalDirection"><span class="annot"><span class="annottext">horizontalDirection :: Position
+</span><a href="Game.html#horizontalDirection"><span class="hs-identifier hs-var hs-var">horizontalDirection</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-144"></span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- | Board positions that can be a starting position for a winning line into diagonal direction</span><span>
+</span><span id="line-147"></span><span class="hs-comment">--   (m - k) * (n - k) positions</span><span>
+</span><span id="line-148"></span><span class="annot"><a href="Game.html#diagonalStarts"><span class="hs-identifier hs-type">diagonalStarts</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-149"></span><span id="diagonalStarts"><span class="annot"><span class="annottext">diagonalStarts :: BoardSetting -&gt; [Position]
+</span><a href="Game.html#diagonalStarts"><span class="hs-identifier hs-var hs-var">diagonalStarts</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210846"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210846"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210845"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210845"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210844"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210844"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210843"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210842"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679210843"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210843"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210846"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210844"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210842"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210842"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210845"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210844"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="annot"><a href="Game.html#diagonalDirection"><span class="hs-identifier hs-type">diagonalDirection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span>
+</span><span id="line-152"></span><span id="diagonalDirection"><span class="annot"><span class="annottext">diagonalDirection :: Position
+</span><a href="Game.html#diagonalDirection"><span class="hs-identifier hs-var hs-var">diagonalDirection</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span>
+</span><span id="line-155"></span><span class="hs-comment">-- | Board positions that can be a starting position for a winning line into antidiagonal direction</span><span>
+</span><span id="line-156"></span><span class="hs-comment">--   (m - k) * (n - k) positions</span><span>
+</span><span id="line-157"></span><span class="annot"><a href="Game.html#antidiagonalStarts"><span class="hs-identifier hs-type">antidiagonalStarts</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-158"></span><span id="antidiagonalStarts"><span class="annot"><span class="annottext">antidiagonalStarts :: BoardSetting -&gt; [Position]
+</span><a href="Game.html#antidiagonalStarts"><span class="hs-identifier hs-var hs-var">antidiagonalStarts</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210839"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210839"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210838"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210838"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210837"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210837"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210836"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210835"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679210836"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210836"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210837"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210839"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679210835"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210835"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210838"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210837"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span class="annot"><a href="Game.html#antidiagonalDirection"><span class="hs-identifier hs-type">antidiagonalDirection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span>
+</span><span id="line-161"></span><span id="antidiagonalDirection"><span class="annot"><span class="annottext">antidiagonalDirection :: Position
+</span><a href="Game.html#antidiagonalDirection"><span class="hs-identifier hs-var hs-var">antidiagonalDirection</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-162"></span><span>
+</span><span id="line-163"></span><span>
+</span><span id="line-164"></span><span class="hs-comment">-- | Checks whether given position starts a winning line into given direction for a given player</span><span>
+</span><span id="line-165"></span><span class="hs-comment">--   O(k * log(m*n))</span><span>
+</span><span id="line-166"></span><span class="annot"><a href="Game.html#checkPosIntoDirection"><span class="hs-identifier hs-type">checkPosIntoDirection</span></a></span><span>
+</span><span id="line-167"></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-comment">-- ^ direction</span><span>
+</span><span id="line-168"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-comment">-- ^ k (length of line to check), has to be &gt; 0</span><span>
+</span><span id="line-169"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span> </span><span>
+</span><span id="line-170"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-comment">-- ^ starting position to check from</span><span>
+</span><span id="line-171"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-172"></span><span class="hs-comment">--checkPosIntoDirection _ 0 _ _ _ = False -- Should never happen with correct k &gt; 0</span><span>
+</span><span id="line-173"></span><span id="checkPosIntoDirection"><span class="annot"><span class="annottext">checkPosIntoDirection :: Position -&gt; Int -&gt; GameState -&gt; Player -&gt; Position -&gt; Bool
+</span><a href="Game.html#checkPosIntoDirection"><span class="hs-identifier hs-var hs-var">checkPosIntoDirection</span></a></span></span><span> </span><span class="annot"><span class="annottext">Position
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span id="local-6989586621679210832"><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210832"><span class="hs-identifier hs-var">gs</span></a></span></span><span> </span><span id="local-6989586621679210831"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210831"><span class="hs-identifier hs-var">player</span></a></span></span><span> </span><span id="local-6989586621679210830"><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210830"><span class="hs-identifier hs-var">position</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Position -&gt; Bool
+</span><a href="Game.html#checkPos"><span class="hs-identifier hs-var">checkPos</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210832"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210831"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210830"><span class="hs-identifier hs-var">position</span></a></span><span>
+</span><span id="line-174"></span><span class="annot"><a href="Game.html#checkPosIntoDirection"><span class="hs-identifier hs-var">checkPosIntoDirection</span></a></span><span> </span><span id="local-6989586621679210829"><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210829"><span class="hs-identifier hs-var">direction</span></a></span></span><span> </span><span id="local-6989586621679210828"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210828"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679210827"><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210827"><span class="hs-identifier hs-var">gs</span></a></span></span><span> </span><span id="local-6989586621679210826"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210826"><span class="hs-identifier hs-var">player</span></a></span></span><span> </span><span id="local-6989586621679210825"><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210825"><span class="hs-identifier hs-var">position</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-175"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Position -&gt; Bool
+</span><a href="Game.html#checkPos"><span class="hs-identifier hs-var">checkPos</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210827"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210826"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210825"><span class="hs-identifier hs-var">position</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Position -&gt; Int -&gt; GameState -&gt; Player -&gt; Position -&gt; Bool
+</span><a href="Game.html#checkPosIntoDirection"><span class="hs-identifier hs-var">checkPosIntoDirection</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210829"><span class="hs-identifier hs-var">direction</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210828"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210827"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210826"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Position -&gt; Position -&gt; Position
+</span><a href="Game.html#add"><span class="hs-identifier hs-var">add</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210825"><span class="hs-identifier hs-var">position</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210829"><span class="hs-identifier hs-var">direction</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="hs-comment">-- | Checks whether one of given positions starts a winning line into given direction for a given player</span><span>
+</span><span id="line-179"></span><span class="hs-comment">--   O(p * k * log(m*n)), where p is number of positions to check</span><span>
+</span><span id="line-180"></span><span class="annot"><a href="Game.html#checkPositions"><span class="hs-identifier hs-type">checkPositions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Game.html#Position"><span class="hs-identifier hs-type">Position</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-181"></span><span id="checkPositions"><span class="annot"><span class="annottext">checkPositions :: GameState -&gt; Player -&gt; Position -&gt; [Position] -&gt; Bool
+</span><a href="Game.html#checkPositions"><span class="hs-identifier hs-var hs-var">checkPositions</span></a></span></span><span> </span><span id="local-6989586621679210823"><span class="annot"><span class="annottext">gs :: GameState
+</span><a href="#local-6989586621679210823"><span class="hs-identifier hs-var">gs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679210822"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210822"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210821"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210821"><span class="hs-identifier hs-var">player</span></a></span></span><span> </span><span id="local-6989586621679210820"><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210820"><span class="hs-identifier hs-var">direction</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Position -&gt; Bool) -&gt; [Position] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">any</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Position -&gt; Int -&gt; GameState -&gt; Player -&gt; Position -&gt; Bool
+</span><a href="Game.html#checkPosIntoDirection"><span class="hs-identifier hs-var">checkPosIntoDirection</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="#local-6989586621679210820"><span class="hs-identifier hs-var">direction</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210822"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210823"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210821"><span class="hs-identifier hs-var">player</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span>
+</span><span id="line-184"></span><span class="hs-comment">-- | Returns whether given player has a winning line</span><span>
+</span><span id="line-185"></span><span class="hs-comment">--   O((2(m-k)(n-k) + m(n-k) + n(m-k)) * k * log(m*n))</span><span>
+</span><span id="line-186"></span><span class="annot"><a href="Game.html#doesPlayerWin"><span class="hs-identifier hs-type">doesPlayerWin</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-187"></span><span id="doesPlayerWin"><span class="annot"><span class="annottext">doesPlayerWin :: GameState -&gt; Player -&gt; Bool
+</span><a href="Game.html#doesPlayerWin"><span class="hs-identifier hs-var hs-var">doesPlayerWin</span></a></span></span><span> </span><span id="local-6989586621679210818"><span class="annot"><span class="annottext">gs :: GameState
+</span><a href="#local-6989586621679210818"><span class="hs-identifier hs-var">gs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span id="local-6989586621679210817"><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210817"><span class="hs-identifier hs-var">bs</span></a></span></span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210816"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210816"><span class="hs-identifier hs-var">player</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-188"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Position -&gt; [Position] -&gt; Bool
+</span><a href="Game.html#checkPositions"><span class="hs-identifier hs-var">checkPositions</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210818"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210816"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="Game.html#horizontalDirection"><span class="hs-identifier hs-var">horizontalDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardSetting -&gt; [Position]
+</span><a href="Game.html#horizontalStarts"><span class="hs-identifier hs-var">horizontalStarts</span></a></span><span> </span><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210817"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span>
+</span><span id="line-189"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Position -&gt; [Position] -&gt; Bool
+</span><a href="Game.html#checkPositions"><span class="hs-identifier hs-var">checkPositions</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210818"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210816"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="Game.html#verticalDirection"><span class="hs-identifier hs-var">verticalDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardSetting -&gt; [Position]
+</span><a href="Game.html#verticalStarts"><span class="hs-identifier hs-var">verticalStarts</span></a></span><span> </span><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210817"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span>
+</span><span id="line-190"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Position -&gt; [Position] -&gt; Bool
+</span><a href="Game.html#checkPositions"><span class="hs-identifier hs-var">checkPositions</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210818"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210816"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="Game.html#diagonalDirection"><span class="hs-identifier hs-var">diagonalDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardSetting -&gt; [Position]
+</span><a href="Game.html#diagonalStarts"><span class="hs-identifier hs-var">diagonalStarts</span></a></span><span> </span><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210817"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span>
+</span><span id="line-191"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Position -&gt; [Position] -&gt; Bool
+</span><a href="Game.html#checkPositions"><span class="hs-identifier hs-var">checkPositions</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210818"><span class="hs-identifier hs-var">gs</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210816"><span class="hs-identifier hs-var">player</span></a></span><span> </span><span class="annot"><span class="annottext">Position
+</span><a href="Game.html#antidiagonalDirection"><span class="hs-identifier hs-var">antidiagonalDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardSetting -&gt; [Position]
+</span><a href="Game.html#antidiagonalStarts"><span class="hs-identifier hs-var">antidiagonalStarts</span></a></span><span> </span><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210817"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span class="hs-comment">-- | Returns one of the winners of a given game.</span><span>
+</span><span id="line-195"></span><span class="hs-comment">--   'Nothing' if there is no winnner yet</span><span>
+</span><span id="line-196"></span><span class="hs-comment">--   'Just Player' - one of the players having winning position</span><span>
+</span><span id="line-197"></span><span class="hs-comment">--   For performance purposes doesn't check if game state is correct.</span><span>
+</span><span id="line-198"></span><span class="hs-comment">--   If game wasn't played correctly, there can be more than one winner but always only one of them is returned.</span><span>
+</span><span id="line-199"></span><span class="hs-comment">--   O(2 * (2(m-k)(n-k) + m(n-k) + n(m-k)) * k * log(m*n))</span><span>
+</span><span id="line-200"></span><span class="annot"><a href="Game.html#whoWins"><span class="hs-identifier hs-type">whoWins</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span>
+</span><span id="line-201"></span><span id="whoWins"><span class="annot"><span class="annottext">whoWins :: GameState -&gt; Maybe Player
+</span><a href="Game.html#whoWins"><span class="hs-identifier hs-var hs-var">whoWins</span></a></span></span><span> </span><span id="local-6989586621679210814"><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210814"><span class="hs-identifier hs-var">gameState</span></a></span></span><span>
+</span><span id="line-202"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Bool
+</span><a href="Game.html#doesPlayerWin"><span class="hs-identifier hs-var">doesPlayerWin</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210814"><span class="hs-identifier hs-var">gameState</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Player -&gt; Maybe Player
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span><span>
+</span><span id="line-203"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">GameState -&gt; Player -&gt; Bool
+</span><a href="Game.html#doesPlayerWin"><span class="hs-identifier hs-var">doesPlayerWin</span></a></span><span> </span><span class="annot"><span class="annottext">GameState
+</span><a href="#local-6989586621679210814"><span class="hs-identifier hs-var">gameState</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Blue"><span class="hs-identifier hs-var">Blue</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Player -&gt; Maybe Player
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Blue"><span class="hs-identifier hs-var">Blue</span></a></span><span>
+</span><span id="line-204"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Player
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-205"></span><span>
+</span><span id="line-206"></span><span>
+</span><span id="line-207"></span><span class="hs-comment">-- | Returns list of available moves for a given game.</span><span>
+</span><span id="line-208"></span><span class="hs-comment">--   Available moves are columns that have their top field empty.</span><span>
+</span><span id="line-209"></span><span class="hs-comment">--   For performance purposes doesn't check correctness of the game.</span><span>
+</span><span id="line-210"></span><span class="hs-comment">--   O(n * log(m + n))</span><span>
+</span><span id="line-211"></span><span class="annot"><a href="Game.html#availableMoves"><span class="hs-identifier hs-type">availableMoves</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Game.html#Move"><span class="hs-identifier hs-type">Move</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-212"></span><span id="availableMoves"><span class="annot"><span class="annottext">availableMoves :: GameState -&gt; [Int]
+</span><a href="Game.html#availableMoves"><span class="hs-identifier hs-var hs-var">availableMoves</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210813"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210813"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210812"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210812"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210811"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210811"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210810"><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210810"><span class="hs-identifier hs-var">board</span></a></span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-213"></span><span>    </span><span class="annot"><span class="annottext">(Int -&gt; Bool) -&gt; [Int] -&gt; [Int]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679210809"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210809"><span class="hs-identifier hs-var">column</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Player -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">Data.Maybe.isNothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardState -&gt; Int -&gt; Maybe Player
+forall a. Seq a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">Seq.index</span></span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210810"><span class="hs-identifier hs-var">board</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210813"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210809"><span class="hs-identifier hs-var">column</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210813"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210812"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">]</span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span>
+</span><span id="line-216"></span><span class="hs-comment">-- | For given player a player that will move next.</span><span>
+</span><span id="line-217"></span><span class="annot"><a href="Game.html#oponent"><span class="hs-identifier hs-type">oponent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Player"><span class="hs-identifier hs-type">Player</span></a></span><span>
+</span><span id="line-218"></span><span id="oponent"><span class="annot"><span class="annottext">oponent :: Player -&gt; Player
+</span><a href="Game.html#oponent"><span class="hs-identifier hs-var hs-var">oponent</span></a></span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Blue"><span class="hs-identifier hs-var">Blue</span></a></span><span>
+</span><span id="line-219"></span><span class="annot"><a href="Game.html#oponent"><span class="hs-identifier hs-var">oponent</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Blue"><span class="hs-identifier hs-var">Blue</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="Game.html#Red"><span class="hs-identifier hs-var">Red</span></a></span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span>
+</span><span id="line-222"></span><span class="hs-comment">-- | For a given game state and a move plays that move and returns resulting game state if move was possible.</span><span>
+</span><span id="line-223"></span><span class="hs-comment">--   O (m + n * log(m))</span><span>
+</span><span id="line-224"></span><span class="annot"><a href="Game.html#applyMove"><span class="hs-identifier hs-type">applyMove</span></a></span><span> </span><span>
+</span><span id="line-225"></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-comment">-- ^ A game state. Correctness is not checked for performance reasons.</span><span>
+</span><span id="line-226"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Game.html#Move"><span class="hs-identifier hs-type">Move</span></a></span><span> </span><span class="hs-comment">-- ^ Number of column in which the token will be placed.</span><span>
+</span><span id="line-227"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span class="hs-comment">-- ^ If chosen column has at least one free place, then 'Just GameState' - game state with the move played. </span><span>
+</span><span id="line-228"></span><span>    </span><span class="hs-comment">--   Token will be placed on the lowest free place int the column. Token's color will corespond to the player whose turn it was.</span><span>
+</span><span id="line-229"></span><span>    </span><span class="hs-comment">--   If chosen column was full, or there was not enough columns, then 'Nothing'.</span><span>
+</span><span id="line-230"></span><span id="applyMove"><span class="annot"><span class="annottext">applyMove :: GameState -&gt; Int -&gt; Maybe GameState
+</span><a href="Game.html#applyMove"><span class="hs-identifier hs-var hs-var">applyMove</span></a></span></span><span> </span><span id="local-6989586621679210806"><span class="annot"><span class="annottext">gs :: GameState
+</span><a href="#local-6989586621679210806"><span class="hs-identifier hs-var">gs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Game.html#GameState"><span class="hs-identifier hs-type">GameState</span></a></span><span> </span><span id="local-6989586621679210805"><span class="annot"><span class="annottext">bs :: BoardSetting
+</span><a href="#local-6989586621679210805"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span> </span><span id="local-6989586621679210804"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210804"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679210803"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210803"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679210802"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210802"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210801"><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210801"><span class="hs-identifier hs-var">board</span></a></span></span><span> </span><span id="local-6989586621679210800"><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210800"><span class="hs-identifier hs-var">player</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679210799"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210799"><span class="hs-identifier hs-var">move</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-231"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe Int
+</span><a href="#local-6989586621679210798"><span class="hs-identifier hs-var">firstFreeFromColumn</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-232"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679210797"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210797"><span class="hs-identifier hs-var">firstFree</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">GameState -&gt; Maybe GameState
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BoardSetting -&gt; BoardState -&gt; Player -&gt; GameState
+</span><a href="Game.html#GameState"><span class="hs-identifier hs-var">GameState</span></a></span><span> </span><span class="annot"><span class="annottext">BoardSetting
+</span><a href="#local-6989586621679210805"><span class="hs-identifier hs-var">bs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe Player -&gt; Maybe Player) -&gt; Int -&gt; BoardState -&gt; BoardState
+forall a. (a -&gt; a) -&gt; Int -&gt; Seq a -&gt; Seq a
+</span><span class="hs-identifier hs-var">Seq.adjust'</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Maybe Player
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Player -&gt; Maybe Player
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210800"><span class="hs-identifier hs-var">player</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210804"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210799"><span class="hs-identifier hs-var">move</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210797"><span class="hs-identifier hs-var">firstFree</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210801"><span class="hs-identifier hs-var">board</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Player -&gt; Player
+</span><a href="Game.html#oponent"><span class="hs-identifier hs-var">oponent</span></a></span><span> </span><span class="annot"><span class="annottext">Player
+</span><a href="#local-6989586621679210800"><span class="hs-identifier hs-var">player</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-233"></span><span>            </span><span class="annot"><span class="annottext">Maybe Int
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe GameState
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-234"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-235"></span><span>        </span><span id="local-6989586621679210798"><span class="annot"><span class="annottext">firstFreeFromColumn :: Maybe Int
+</span><a href="#local-6989586621679210798"><span class="hs-identifier hs-var hs-var">firstFreeFromColumn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Maybe Player -&gt; Bool) -&gt; BoardState -&gt; Maybe Int
+forall a. (a -&gt; Bool) -&gt; Seq a -&gt; Maybe Int
+</span><span class="hs-identifier hs-var">Seq.findIndexL</span></span><span> </span><span class="annot"><span class="annottext">Maybe Player -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">Data.Maybe.isNothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Seq BoardState -&gt; Int -&gt; BoardState
+forall a. Seq a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">Seq.index</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; BoardState -&gt; Seq BoardState
+forall a. Int -&gt; Seq a -&gt; Seq (Seq a)
+</span><span class="hs-identifier hs-var">Seq.chunksOf</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210804"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">BoardState
+</span><a href="#local-6989586621679210801"><span class="hs-identifier hs-var">board</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679210799"><span class="hs-identifier hs-var">move</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-236"></span></pre></body></html>

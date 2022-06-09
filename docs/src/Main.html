@@ -1,0 +1,133 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedLabels  #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE OverloadedLists   #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Main</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">GI.Gdk</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Gdk</span></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">GI.Gtk</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Gtk</span></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GI.Gtk.Declarative</span></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GI.Gtk.Declarative.App.Simple</span></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="UI.html"><span class="hs-identifier">UI</span></a></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ByteString</span></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Concurrent.Async</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">async</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="annot"><a href="Main.html#styles"><span class="hs-identifier hs-type">styles</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ByteString</span></span><span>
+</span><span id="line-19"></span><span id="styles"><span class="annot"><span class="annottext">styles :: ByteString
+</span><a href="Main.html#styles"><span class="hs-identifier hs-var hs-var">styles</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[ByteString] -&gt; ByteString
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Item [ByteString]
+</span><span class="hs-string">&quot;.red {color: red;}&quot;</span></span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item [ByteString]
+</span><span class="hs-string">&quot;.blue {color: #00BFFF;}&quot;</span></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item [ByteString]
+</span><span class="hs-string">&quot;.winInformation {font-size: xx-large; font-weight: bold;}&quot;</span></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item [ByteString]
+</span><span class="hs-string">&quot;.header {font-size: large; font-weight: bold;}&quot;</span></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item [ByteString]
+</span><span class="hs-string">&quot;.settingsLabel {font-weight: bold;}&quot;</span></span><span>
+</span><span id="line-25"></span><span>    </span><span class="hs-special">]</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Main.html#main"><span class="hs-identifier hs-type">main</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span id="main"><span class="annot"><span class="annottext">IO ()
+</span><a href="Main.html#main"><span class="hs-identifier hs-var hs-var hs-var">main</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-30"></span><span>    </span><span class="annot"><span class="annottext">IO (Maybe [Text]) -&gt; IO ()
+forall (f :: * -&gt; *) a. Functor f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">void</span></span><span> </span><span class="annot"><span class="annottext">(IO (Maybe [Text]) -&gt; IO ()) -&gt; IO (Maybe [Text]) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Maybe [Text] -&gt; IO (Maybe [Text])
+forall (m :: * -&gt; *).
+(HasCallStack, MonadIO m) =&gt;
+Maybe [Text] -&gt; m (Maybe [Text])
+</span><span class="hs-identifier hs-var">Gtk.init</span></span><span> </span><span class="annot"><span class="annottext">Maybe [Text]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-comment">-- Set up screen and CSS provider</span><span>
+</span><span id="line-33"></span><span>    </span><span id="local-6989586621679214991"><span class="annot"><span class="annottext">Screen
+</span><a href="#local-6989586621679214991"><span class="hs-identifier hs-var">screen</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO Screen -&gt; (Screen -&gt; IO Screen) -&gt; Maybe Screen -&gt; IO Screen
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IO Screen
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;No screen?!&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Screen -&gt; IO Screen
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Screen -&gt; IO Screen) -&gt; IO (Maybe Screen) -&gt; IO Screen
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">IO (Maybe Screen)
+forall (m :: * -&gt; *). (HasCallStack, MonadIO m) =&gt; m (Maybe Screen)
+</span><span class="hs-identifier hs-var">Gdk.screenGetDefault</span></span><span>
+</span><span id="line-34"></span><span>    </span><span id="local-6989586621679214987"><span class="annot"><span class="annottext">CssProvider
+</span><a href="#local-6989586621679214987"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO CssProvider
+forall (m :: * -&gt; *). (HasCallStack, MonadIO m) =&gt; m CssProvider
+</span><span class="hs-identifier hs-var">Gtk.cssProviderNew</span></span><span>
+</span><span id="line-35"></span><span>    </span><span class="annot"><span class="annottext">CssProvider -&gt; ByteString -&gt; IO ()
+forall (m :: * -&gt; *) a.
+(HasCallStack, MonadIO m, IsCssProvider a) =&gt;
+a -&gt; ByteString -&gt; m ()
+</span><span class="hs-identifier hs-var">Gtk.cssProviderLoadFromData</span></span><span> </span><span class="annot"><span class="annottext">CssProvider
+</span><a href="#local-6989586621679214987"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="Main.html#styles"><span class="hs-identifier hs-var">styles</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><span class="annottext">Screen -&gt; CssProvider -&gt; Word32 -&gt; IO ()
+forall (m :: * -&gt; *) a b.
+(HasCallStack, MonadIO m, IsScreen a, IsStyleProvider b) =&gt;
+a -&gt; b -&gt; Word32 -&gt; m ()
+</span><span class="hs-identifier hs-var">Gtk.styleContextAddProviderForScreen</span></span><span>
+</span><span id="line-37"></span><span>        </span><span class="annot"><span class="annottext">Screen
+</span><a href="#local-6989586621679214991"><span class="hs-identifier hs-var">screen</span></a></span><span>
+</span><span id="line-38"></span><span>        </span><span class="annot"><span class="annottext">CssProvider
+</span><a href="#local-6989586621679214987"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-39"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int32 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int32
+</span><span class="hs-identifier hs-var">Gtk.STYLE_PROVIDER_PRIORITY_USER</span></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-comment">-- Start main loop</span><span>
+</span><span id="line-42"></span><span>    </span><span class="annot"><span class="annottext">IO (Async ()) -&gt; IO ()
+forall (f :: * -&gt; *) a. Functor f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">void</span></span><span> </span><span class="annot"><span class="annottext">(IO (Async ()) -&gt; IO ())
+-&gt; (IO () -&gt; IO (Async ())) -&gt; IO () -&gt; IO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">IO () -&gt; IO (Async ())
+forall a. IO a -&gt; IO (Async a)
+</span><span class="hs-identifier hs-var">async</span></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-43"></span><span>        </span><span class="annot"><span class="annottext">IO State -&gt; IO ()
+forall (f :: * -&gt; *) a. Functor f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">void</span></span><span> </span><span class="annot"><span class="annottext">(IO State -&gt; IO ()) -&gt; IO State -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">App Window State Event -&gt; IO State
+forall window state event.
+IsBin window =&gt;
+App window state event -&gt; IO state
+</span><span class="hs-identifier hs-var">runLoop</span></span><span> </span><span class="annot"><span class="annottext">App Window State Event
+</span><a href="#local-6989586621679214980"><span class="hs-identifier hs-var">app</span></a></span><span>
+</span><span id="line-44"></span><span>        </span><span class="annot"><span class="annottext">IO ()
+forall (m :: * -&gt; *). (HasCallStack, MonadIO m) =&gt; m ()
+</span><span class="hs-identifier hs-var">Gtk.mainQuit</span></span><span>
+</span><span id="line-45"></span><span>    </span><span class="annot"><span class="annottext">IO ()
+forall (m :: * -&gt; *). (HasCallStack, MonadIO m) =&gt; m ()
+</span><span class="hs-identifier hs-var">Gtk.main</span></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-47"></span><span>        </span><span id="local-6989586621679214980"><span class="annot"><span class="annottext">app :: App Window State Event
+</span><a href="#local-6989586621679214980"><span class="hs-identifier hs-var hs-var">app</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">App :: forall window state event.
+(state -&gt; event -&gt; Transition state event)
+-&gt; (state -&gt; AppView window event)
+-&gt; [Producer event IO ()]
+-&gt; state
+-&gt; App window state event
+</span><span class="hs-identifier hs-type">App</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">view :: State -&gt; AppView Window Event
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">State -&gt; AppView Window Event
+</span><a href="UI.html#view%27"><span class="hs-identifier hs-var">view'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">update :: State -&gt; Event -&gt; Transition State Event
+</span><span class="hs-identifier hs-var">update</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">State -&gt; Event -&gt; Transition State Event
+</span><a href="UI.html#update%27"><span class="hs-identifier hs-var">update'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">inputs :: [Producer Event IO ()]
+</span><span class="hs-identifier hs-var">inputs</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">initialState :: State
+</span><span class="hs-identifier hs-var">initialState</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">State
+</span><a href="UI.html#initialState%27"><span class="hs-identifier hs-var">UI.initialState'</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-48"></span></pre></body></html>

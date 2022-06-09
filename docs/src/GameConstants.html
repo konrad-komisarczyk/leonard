@@ -1,0 +1,129 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE OverloadedLists #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-comment">{-|
+Module      : GameConstants
+Description : Constants for the application that are connected to the game, not the application appearance
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">GameConstants</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Game.html"><span class="hs-identifier">Game</span></a></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="AI.html"><span class="hs-identifier">AI</span></a></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Int</span></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- DIFFICULTY CONSTANTS --</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- | Int alias representing Computer player difficulty.</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">type</span><span> </span><span id="Difficulty"><span class="annot"><a href="GameConstants.html#Difficulty"><span class="hs-identifier hs-var">Difficulty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="annot"><a href="GameConstants.html#defaultDifficulty"><span class="hs-identifier hs-type">defaultDifficulty</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameConstants.html#Difficulty"><span class="hs-identifier hs-type">Difficulty</span></a></span><span>
+</span><span id="line-24"></span><span id="defaultDifficulty"><span class="annot"><span class="annottext">defaultDifficulty :: Difficulty
+</span><a href="GameConstants.html#defaultDifficulty"><span class="hs-identifier hs-var hs-var">defaultDifficulty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- | Difficulty level names to display. Vectors i'th element is name of difficulty = i.</span><span>
+</span><span id="line-28"></span><span class="annot"><a href="GameConstants.html#difficultyNames"><span class="hs-identifier hs-type">difficultyNames</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Vector</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-29"></span><span id="difficultyNames"><span class="annot"><span class="annottext">difficultyNames :: Vector Text
+</span><a href="GameConstants.html#difficultyNames"><span class="hs-identifier hs-var hs-var">difficultyNames</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Item (Vector Text)
+</span><span class="hs-string">&quot;Random&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item (Vector Text)
+</span><span class="hs-string">&quot;Beginner&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item (Vector Text)
+</span><span class="hs-string">&quot;Intermediate&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Item (Vector Text)
+</span><span class="hs-string">&quot;Advanced&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="annot"><a href="GameConstants.html#difficultyName"><span class="hs-identifier hs-type">difficultyName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameConstants.html#Difficulty"><span class="hs-identifier hs-type">Difficulty</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-33"></span><span id="difficultyName"><span class="annot"><span class="annottext">difficultyName :: Difficulty -&gt; Text
+</span><a href="GameConstants.html#difficultyName"><span class="hs-identifier hs-var hs-var">difficultyName</span></a></span></span><span> </span><span id="local-6989586621679211419"><span class="annot"><span class="annottext">Difficulty
+</span><a href="#local-6989586621679211419"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector Text
+</span><a href="GameConstants.html#difficultyNames"><span class="hs-identifier hs-var">difficultyNames</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Text -&gt; Difficulty -&gt; Text
+forall a. Vector a -&gt; Difficulty -&gt; a
+</span><span class="hs-operator hs-var">Data.Vector.!</span></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><a href="#local-6989586621679211419"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="annot"><a href="GameConstants.html#maxDifficultyNameLength"><span class="hs-identifier hs-type">maxDifficultyNameLength</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int32</span></span><span>
+</span><span id="line-37"></span><span id="maxDifficultyNameLength"><span class="annot"><span class="annottext">maxDifficultyNameLength :: Int32
+</span><a href="GameConstants.html#maxDifficultyNameLength"><span class="hs-identifier hs-var hs-var">maxDifficultyNameLength</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int32
+</span><span class="hs-number">12</span></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- | Difficulty levels range upper bound.</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="GameConstants.html#maxDifficulty"><span class="hs-identifier hs-type">maxDifficulty</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameConstants.html#Difficulty"><span class="hs-identifier hs-type">Difficulty</span></a></span><span>
+</span><span id="line-42"></span><span id="maxDifficulty"><span class="annot"><span class="annottext">maxDifficulty :: Difficulty
+</span><a href="GameConstants.html#maxDifficulty"><span class="hs-identifier hs-var hs-var">maxDifficulty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Vector Text -&gt; Difficulty
+forall a. Vector a -&gt; Difficulty
+</span><span class="hs-identifier hs-var">Data.Vector.length</span></span><span> </span><span class="annot"><span class="annottext">Vector Text
+</span><a href="GameConstants.html#difficultyNames"><span class="hs-identifier hs-var">difficultyNames</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Difficulty -&gt; Difficulty -&gt; Difficulty
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- | Difficulty levels range lower bound.</span><span>
+</span><span id="line-46"></span><span class="annot"><a href="GameConstants.html#minDifficulty"><span class="hs-identifier hs-type">minDifficulty</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameConstants.html#Difficulty"><span class="hs-identifier hs-type">Difficulty</span></a></span><span>
+</span><span id="line-47"></span><span id="minDifficulty"><span class="annot"><span class="annottext">minDifficulty :: Difficulty
+</span><a href="GameConstants.html#minDifficulty"><span class="hs-identifier hs-var hs-var">minDifficulty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="annot"><a href="GameConstants.html#difficultyToHiperparameters"><span class="hs-identifier hs-type">difficultyToHiperparameters</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="GameConstants.html#Difficulty"><span class="hs-identifier hs-type">Difficulty</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="AI.html#Hiperparameters"><span class="hs-identifier hs-type">AI.Hiperparameters</span></a></span><span>
+</span><span id="line-51"></span><span id="difficultyToHiperparameters"><span class="annot"><span class="annottext">difficultyToHiperparameters :: Difficulty -&gt; Hiperparameters
+</span><a href="GameConstants.html#difficultyToHiperparameters"><span class="hs-identifier hs-var hs-var">difficultyToHiperparameters</span></a></span></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Hiperparameters
+</span><a href="AI.html#Random"><span class="hs-identifier hs-var">Random</span></a></span><span>
+</span><span id="line-52"></span><span class="annot"><a href="GameConstants.html#difficultyToHiperparameters"><span class="hs-identifier hs-var">difficultyToHiperparameters</span></a></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Float -&gt; Difficulty -&gt; Hiperparameters
+</span><a href="AI.html#MCTS"><span class="hs-identifier hs-var">MCTS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Float -&gt; Float
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">8000</span></span><span>
+</span><span id="line-53"></span><span class="annot"><a href="GameConstants.html#difficultyToHiperparameters"><span class="hs-identifier hs-var">difficultyToHiperparameters</span></a></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">2</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Float -&gt; Difficulty -&gt; Hiperparameters
+</span><a href="AI.html#MCTS"><span class="hs-identifier hs-var">MCTS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Float -&gt; Float
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">24000</span></span><span>
+</span><span id="line-54"></span><span class="annot"><a href="GameConstants.html#difficultyToHiperparameters"><span class="hs-identifier hs-var">difficultyToHiperparameters</span></a></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">3</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Float -&gt; Difficulty -&gt; Hiperparameters
+</span><a href="AI.html#MCTS"><span class="hs-identifier hs-var">MCTS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Float -&gt; Float
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">72000</span></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- BOARD SETTING CONSTANTS --</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="annot"><a href="GameConstants.html#defaultBoardSetting"><span class="hs-identifier hs-type">defaultBoardSetting</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Game.html#BoardSetting"><span class="hs-identifier hs-type">BoardSetting</span></a></span><span>
+</span><span id="line-60"></span><span id="defaultBoardSetting"><span class="annot"><span class="annottext">defaultBoardSetting :: BoardSetting
+</span><a href="GameConstants.html#defaultBoardSetting"><span class="hs-identifier hs-var hs-var">defaultBoardSetting</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Difficulty -&gt; Difficulty -&gt; Difficulty -&gt; BoardSetting
+</span><a href="Game.html#BoardSetting"><span class="hs-identifier hs-var">BoardSetting</span></a></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">6</span></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">7</span></span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">4</span></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="GameConstants.html#maxRows"><span class="hs-identifier hs-type">maxRows</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-64"></span><span id="maxRows"><span class="annot"><span class="annottext">maxRows :: Difficulty
+</span><a href="GameConstants.html#maxRows"><span class="hs-identifier hs-var hs-var">maxRows</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">11</span></span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="annot"><a href="GameConstants.html#maxColumns"><span class="hs-identifier hs-type">maxColumns</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-68"></span><span id="maxColumns"><span class="annot"><span class="annottext">maxColumns :: Difficulty
+</span><a href="GameConstants.html#maxColumns"><span class="hs-identifier hs-var hs-var">maxColumns</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">19</span></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="annot"><a href="GameConstants.html#minLine"><span class="hs-identifier hs-type">minLine</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-72"></span><span id="minLine"><span class="annot"><span class="annottext">minLine :: Difficulty
+</span><a href="GameConstants.html#minLine"><span class="hs-identifier hs-var hs-var">minLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Difficulty
+</span><span class="hs-number">3</span></span><span>
+</span><span id="line-73"></span></pre></body></html>
